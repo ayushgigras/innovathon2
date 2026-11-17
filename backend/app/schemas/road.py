@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional, List
 from datetime import datetime
 from app.schemas.common import RoadStatus, GeoPoint
@@ -45,8 +45,7 @@ class RoadSegmentResponse(RoadSegmentBase):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class RouteOption(BaseModel):
@@ -57,6 +56,9 @@ class RouteOption(BaseModel):
     status: str
     passable: bool
     segments: List[str]
+    geometry: List[GeoPoint] = []
+    warnings: List[str] = []
+    reason: Optional[str] = None
     disclaimer: str = "AI-suggested alternate route — confirm passability with field teams before dispatch"
 
 

@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional, List
 from datetime import datetime
 from app.schemas.common import GeoPoint
@@ -35,5 +35,4 @@ class SettlementResponse(SettlementBase):
     is_simulated: bool = True
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

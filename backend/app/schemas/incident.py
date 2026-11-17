@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 from app.schemas.common import IncidentStatus, IncidentSeverity, IncidentType, IncidentSource, GeoPoint
@@ -58,8 +58,7 @@ class IncidentResponse(IncidentBase):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class IncidentReportCreate(BaseModel):
@@ -88,5 +87,4 @@ class IncidentReportResponse(BaseModel):
     source: str
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

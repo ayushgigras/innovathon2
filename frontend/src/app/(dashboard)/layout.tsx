@@ -1,5 +1,6 @@
 import React from "react";
 import { Sidebar } from "@/components/layout/Sidebar";
+import { EmergencyAlertBanner } from "@/components/shared/EmergencyAlertBanner";
 
 export default function DashboardLayout({
   children,
@@ -9,9 +10,12 @@ export default function DashboardLayout({
   return (
     <div className="flex h-screen overflow-hidden bg-slate-950">
       <Sidebar />
-      <main className="flex-1 overflow-y-auto">
-        {children}
-      </main>
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <EmergencyAlertBanner />
+        <main className="flex-1 overflow-y-auto">
+          {children}
+        </main>
+      </div>
     </div>
   );
 }

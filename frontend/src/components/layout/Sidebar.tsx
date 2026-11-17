@@ -42,6 +42,11 @@ const NAV_GROUPS: (NavItem | NavGroup)[] = [
     icon: LayoutDashboard,
   },
   {
+    label: "Admin Control Room",
+    href: "/admin/dashboard",
+    icon: Shield,
+  },
+  {
     group: "AAPDA Lens",
     icon: Eye,
     items: [
@@ -123,12 +128,12 @@ export function Sidebar({ className }: SidebarProps) {
       <button
         onClick={() => setCollapsed(!collapsed)}
         aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-        className="absolute -right-3 top-14 z-10 w-6 h-6 rounded-full bg-slate-700 border border-slate-600 flex items-center justify-center hover:bg-slate-600 transition-colors"
+        className="absolute -right-3 top-14 z-10 w-6 h-6 rounded-full bg-slate-800 border border-slate-700 shadow-sm flex items-center justify-center hover:bg-slate-700 transition-colors"
       >
         {collapsed ? (
-          <ChevronRight className="w-3.5 h-3.5 text-slate-300" />
+          <ChevronRight className="w-3.5 h-3.5 text-slate-600" />
         ) : (
-          <ChevronLeft className="w-3.5 h-3.5 text-slate-300" />
+          <ChevronLeft className="w-3.5 h-3.5 text-slate-600" />
         )}
       </button>
 
@@ -147,15 +152,15 @@ export function Sidebar({ className }: SidebarProps) {
                 className={cn(
                   "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-150 group",
                   active
-                    ? "bg-emerald-500/10 text-emerald-400 border-l-2 border-emerald-500 pl-[10px]"
-                    : "text-slate-400 hover:bg-slate-800 hover:text-slate-100 border-l-2 border-transparent"
+                    ? "bg-emerald-500/15 text-emerald-700 font-semibold border-l-2 border-emerald-600 pl-[10px]"
+                    : "text-slate-500 hover:bg-slate-800/80 hover:text-slate-900 border-l-2 border-transparent"
                 )}
                 title={collapsed ? item.label : undefined}
               >
                 <Icon
                   className={cn(
                     "w-5 h-5 flex-shrink-0",
-                    active ? "text-emerald-400" : "text-slate-500 group-hover:text-slate-300"
+                    active ? "text-emerald-700" : "text-slate-500 group-hover:text-slate-700"
                   )}
                   aria-hidden="true"
                 />
@@ -174,14 +179,14 @@ export function Sidebar({ className }: SidebarProps) {
               <div
                 className={cn(
                   "flex items-center gap-3 px-3 py-2 text-xs font-semibold uppercase tracking-wider",
-                  hasActiveChild ? "text-emerald-500" : "text-slate-500"
+                  hasActiveChild ? "text-emerald-700" : "text-slate-500"
                 )}
                 aria-label={`${item.group} section`}
               >
                 <GroupIcon
                   className={cn(
                     "w-4 h-4 flex-shrink-0",
-                    hasActiveChild ? "text-emerald-500" : "text-slate-600"
+                    hasActiveChild ? "text-emerald-700" : "text-slate-500"
                   )}
                   aria-hidden="true"
                 />
@@ -201,15 +206,15 @@ export function Sidebar({ className }: SidebarProps) {
                       "flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all duration-150 group",
                       collapsed ? "" : "ml-2",
                       active
-                        ? "bg-emerald-500/10 text-emerald-400 border-l-2 border-emerald-500 pl-[10px]"
-                        : "text-slate-400 hover:bg-slate-800 hover:text-slate-100 border-l-2 border-transparent"
+                        ? "bg-emerald-500/15 text-emerald-700 font-semibold border-l-2 border-emerald-600 pl-[10px]"
+                        : "text-slate-500 hover:bg-slate-800/80 hover:text-slate-900 border-l-2 border-transparent"
                     )}
                     title={collapsed ? child.label : undefined}
                   >
                     <ChildIcon
                       className={cn(
                         "w-4 h-4 flex-shrink-0",
-                        active ? "text-emerald-400" : "text-slate-500 group-hover:text-slate-300"
+                        active ? "text-emerald-700" : "text-slate-500 group-hover:text-slate-700"
                       )}
                       aria-hidden="true"
                     />
@@ -237,7 +242,7 @@ export function Sidebar({ className }: SidebarProps) {
               id="role-switcher"
               value={role}
               onChange={(e) => setRole(e.target.value as UserRole)}
-              className="w-full bg-slate-800 border border-slate-700 rounded-md text-slate-200 text-xs px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+              className="w-full bg-slate-800 border border-slate-700 rounded-md text-slate-900 text-xs px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-emerald-500"
               aria-label="Switch demo user role"
             >
               {(Object.entries(ROLE_LABELS) as [UserRole, string][]).map(([value, label]) => (
@@ -262,7 +267,7 @@ export function Sidebar({ className }: SidebarProps) {
             aria-hidden="true"
           />
           {!collapsed && (
-            <span className="text-amber-400 text-xs font-medium">DEMO / SIMULATED</span>
+            <span className="text-amber-700 text-xs font-semibold">DEMO / SIMULATED</span>
           )}
         </div>
       </div>

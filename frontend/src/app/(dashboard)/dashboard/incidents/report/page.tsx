@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import {
   FileText,
   MapPin,
@@ -10,6 +11,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { DemoBadge } from "@/components/shared/DemoBadge";
+import { addCitizenReport } from "@/lib/api/mock-adapter";
 
 type IncidentType = "road_block" | "flood" | "landslide" | "avalanche" | "bridge_damage" | "other";
 type SeverityLevel = "low" | "medium" | "high" | "critical";
@@ -72,7 +74,19 @@ export default function PublicReportPage(): React.ReactElement {
   const handleSubmit = (e: React.FormEvent): void => {
     e.preventDefault();
     if (!validate()) return;
-    setReportId(generateReportId());
+    const newInc = addCitizenReport({
+      title: `${(form.incidentType || "Incident").toUpperCase().replace("_", " ")}: ${form.location}`,
+      description: form.description,
+      severity: (form.severity as any) || "high",
+      district: form.location.toLowerCase().includes("doda")
+        ? "Doda"
+        : form.location.toLowerCase().includes("shopian")
+        ? "Shopian"
+        : "Ramban",
+      location: { lat: 33.244, lng: 75.258 },
+      reportedBy: form.reporterName || "citizen_mobile",
+    });
+    setReportId(newInc.id);
     setSubmitted(true);
   };
 
@@ -257,13 +271,21 @@ function SuccessScreen({ reportId, onReset }: { reportId: string; onReset: () =>
         <p className="text-blue-300 text-xs">AI system only assists DDMA officers — no automatic action will be taken. For emergencies call <strong>112</strong>.</p>
       </div>
       <DemoBadge variant="banner" />
-      <button
-        type="button"
-        onClick={onReset}
-        className="text-slate-400 hover:text-slate-200 text-sm transition-colors"
-      >
-        Submit another report
-      </button>
+      <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
+        <Link
+          href="/dashboard/roads"
+          className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-md transition-colors"
+        >
+          🗺️ View Incident on Live Mountain Road Map
+        </Link>
+        <button
+          type="button"
+          onClick={onReset}
+          className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold transition-colors"
+        >
+          Submit another report
+        </button>
+      </div>
     </div>
   );
 }

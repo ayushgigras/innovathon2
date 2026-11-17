@@ -12,13 +12,13 @@ export function DemoBadge({ className, variant = "inline" }: DemoBadgeProps): Re
     return (
       <div
         className={cn(
-          "flex items-center gap-2 px-3 py-2 bg-amber-500/10 border border-amber-500/30 rounded-lg text-amber-400 text-xs font-medium",
+          "flex items-center gap-2 px-3 py-2 bg-amber-500/15 border border-amber-600/30 rounded-lg text-amber-800 text-xs font-medium",
           className
         )}
         role="status"
         aria-label="Demo simulated data"
       >
-        <AlertTriangle className="w-4 h-4 flex-shrink-0" aria-hidden="true" />
+        <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0" aria-hidden="true" />
         <span>DEMO / SIMULATED — All data is synthetic and for demonstration purposes only</span>
       </div>
     );
@@ -27,12 +27,12 @@ export function DemoBadge({ className, variant = "inline" }: DemoBadgeProps): Re
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 px-1.5 py-0.5 bg-amber-500/10 border border-amber-500/30 rounded text-amber-400 text-[10px] font-semibold uppercase tracking-wide",
+        "inline-flex items-center gap-1 px-1.5 py-0.5 bg-amber-500/15 border border-amber-600/30 rounded text-amber-800 text-[10px] font-semibold uppercase tracking-wide",
         className
       )}
       title="Simulated demo data — not real"
     >
-      <AlertTriangle className="w-2.5 h-2.5" aria-hidden="true" />
+      <AlertTriangle className="w-2.5 h-2.5 text-amber-600" aria-hidden="true" />
       DEMO
     </span>
   );

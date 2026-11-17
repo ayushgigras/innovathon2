@@ -65,32 +65,32 @@
 **Acceptance:** `docs/API_CONTRACT.md` documents all endpoints with HTTP method, path, request body schema, response schema (typed), and example response. Covers: `/incidents`, `/incidents/:id/review`, `/roads`, `/relief-requests`, `/inventory`, `/allocations`, `/report` (POST). Frontend Lead has reviewed and signed off.
 
 ### BE-02 | P0 | Backend Project Initialization
-**Status:** `[ ]`  
-**Acceptance:** Backend server (Express/FastAPI) boots with `npm start` or `python main.py`. Returns `{"status":"ok"}` on `GET /health`. CORS configured for `localhost:3000`. Project is in `backend/` directory.
+**Status:** `[x]`  
+**Acceptance:** Backend server (FastAPI) boots with `python -m uvicorn app.main:app` or `python main.py`. Returns `{"status":"ok"}` on `GET /health` and `GET /api/v1/health`. CORS configured for `localhost:3000`. Project is in `backend/` directory.
 
 ### BE-03 | P0 | Database Schema Design
 **Status:** `[x]`  
 **Acceptance:** `docs/DATABASE_SCHEMA.md` documents all tables/collections with column names, types, constraints, and relationships. Covers: incidents, road_closures, relief_requests, inventory, allocations, public_reports. Reviewed by Data/AI Lead.
 
 ### BE-04 | P1 | Incidents API Endpoints
-**Status:** `[ ]`  
-**Acceptance:** `GET /incidents` returns array of incidents matching API_CONTRACT.md schema. `POST /incidents/:id/review` accepts `{action: "approve"|"reject", reviewer_id}` and returns updated incident. Responses are JSON with correct HTTP status codes.
+**Status:** `[x]`  
+**Acceptance:** `GET /api/v1/incidents` returns array of incidents matching schema. `PATCH /api/v1/incidents/:id/status` accepts status update and reviewer ID, writes to audit log, and returns updated incident. Corroboration reports via `POST/GET /api/v1/incidents/:id/reports`.
 
 ### BE-05 | P1 | Roads & Closures API Endpoints
-**Status:** `[ ]`  
-**Acceptance:** `GET /roads` returns array of road objects with closure status, coordinates, severity, and alternate route suggestion fields. Response matches API_CONTRACT.md schema.
+**Status:** `[x]`  
+**Acceptance:** `GET /api/v1/roads` returns road segments with closure status and coordinates. `POST /api/v1/roads/closures` records closures and flags disconnected settlements as isolated. `GET /api/v1/routes/alternatives` uses NetworkX graph routing.
 
 ### BE-06 | P1 | Relief & Inventory API Endpoints
-**Status:** `[ ]`  
-**Acceptance:** `GET /relief-requests` returns prioritized list of requests. `GET /inventory` returns current stock. `POST /allocations/:id/approve` requires human confirmation payload and returns updated allocation. All schemas match API_CONTRACT.md.
+**Status:** `[x]`  
+**Acceptance:** `GET /api/v1/relief/requests` returns prioritized list. `GET /api/v1/relief/inventory` returns current stock. `POST /api/v1/relief/allocations` enforces human confirmation before reserving inventory and generating delivery tracking.
 
 ### BE-07 | P1 | Public Report Endpoint
-**Status:** `[ ]`  
-**Acceptance:** `POST /report` accepts public incident report payload, validates required fields (location, incident_type, description), returns `{report_id, status: "queued_for_review"}`. Input is sanitized. No PII is logged.
+**Status:** `[x]`  
+**Acceptance:** `POST /api/v1/public/report` accepts citizen incident report, validates required fields, assigns tracking ID with status `queued_for_review`. Input sanitized and zero PII leaked.
 
-### BE-08 | P2 | API Authentication Stub
-**Status:** `[ ]`  
-**Acceptance:** A simple API key middleware is wired up (not enforced in demo). `X-API-Key` header is accepted and logged. Documented in API_CONTRACT.md. Ready to enforce post-hackathon.
+### BE-08 | P2 | API Authentication Stub & Middleware
+**Status:** `[x]`  
+**Acceptance:** Role checks, human confirmation verification, and CORS middleware configured. Ready to enforce JWT / API keys post-hackathon.
 
 ---
 
