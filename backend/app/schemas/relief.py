@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional, List
 from datetime import datetime
 from app.schemas.common import ReliefPriority, ReliefStatus, DeliveryStatus
@@ -44,8 +44,7 @@ class ReliefRequestResponse(BaseModel):
     createdAt: datetime
     updatedAt: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class InventoryItemResponse(BaseModel):
@@ -59,8 +58,7 @@ class InventoryItemResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ReliefAllocationCreate(BaseModel):
@@ -81,8 +79,7 @@ class ReliefAllocationResponse(BaseModel):
     items: List[RequestedItemSchema] = []
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class DeliveryItemSchema(BaseModel):
@@ -105,8 +102,7 @@ class DeliveryResponse(BaseModel):
     is_simulated: bool = True
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class DeliveryStatusUpdate(BaseModel):
