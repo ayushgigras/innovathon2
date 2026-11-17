@@ -62,11 +62,18 @@
   - `GIS-03`: MargRakshak network routing visualization showing green road-following recommended bypass and blue secondary detour with distance, travel time, and safety warnings
   - `GIS-04`: Critical facility markers (🏥 Hospitals with operational bed capacity, 📦 DDMA Relief Logistics Warehouses) and isolated settlement status badges (⚠️ ISOLATED) with interactive map popups
   - `GIS-05`: Multi-region geographical zoom selector (All J&K, Ramban NH-44 Landslide, Shopian Mughal Road, Doda Chenab Valley) with responsive view reset and on-map legend
+  - `MR-01`: MargRakshak NetworkX Road Network Graph engine (`app/services/margrakshak/graph.py`) with settlement/facility nodes, delay multipliers (open=1.0x, partial=2.5x, unknown=2.0x, closed=inf), and road update history
+  - `MR-02`: MargRakshak Dijkstra alternative routing (`app/services/margrakshak/routing.py`) calculating up to 3 feasible routes excluding closed roads and penalizing single-lane corridors
+  - `MR-03`: MargRakshak settlement isolation detection (`app/services/margrakshak/isolation.py`) evaluating path reachability to critical facilities and diagnosing blocked access roads
+  - `RG-01`: RahatGrid deterministic request prioritization (`app/services/rahatgrid/prioritization.py`) ranking by survival needs, medical urgency, population scale, settlement isolation, and wait time
+  - `RG-02`: RahatGrid inventory headroom & depot accessibility engine (`app/services/rahatgrid/inventory.py`) preventing negative inventory and checking road connectivity from depot to settlement
+  - `RG-03`: RahatGrid multi-request allocation recommendation engine (`app/services/rahatgrid/allocation.py`) preventing double-allocation, reporting item shortages, and enforcing mandatory human approval
+  - `RG-04`: RahatGrid delivery lifecycle state machine (`app/services/rahatgrid/delivery.py`) tracking proposed -> approved -> dispatched -> delivered with transition audit history
 
 - **Verification Results:**
   - `npm run lint` (frontend) — Passed with **0 errors**
   - `npm run build` (frontend) — Passed with **0 errors**, all 11 static routes generated
-  - `python -m pytest` (backend) — Passed with **61/61 tests passing** (health, incidents, roads, routes, settlements, relief, allocations, deliveries, verification, text similarity, image hashing, EXIF, temporal staleness, GPS mismatch, satellite correlation, proactive alerts, live Open-Meteo weather, and end-to-end multi-source analysis)
+  - `python -m pytest` (backend) — Passed with **73/73 tests passing** (AAPDA Lens, MargRakshak, RahatGrid, Health, Incidents, Relief, Roads, Routes, Settlements, Validation) (health, incidents, roads, routes, settlements, relief, allocations, deliveries, verification, text similarity, image hashing, EXIF, temporal staleness, GPS mismatch, satellite correlation, proactive alerts, live Open-Meteo weather, and end-to-end multi-source analysis)
   - `Uvicorn` server running live on `http://localhost:8000` (docs at `http://localhost:8000/docs`)
   - `Next.js` server running live on `http://localhost:3000`
 
