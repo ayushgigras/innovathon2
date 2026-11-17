@@ -56,6 +56,9 @@ class RouteOption(BaseModel):
     status: str
     passable: bool
     segments: List[str]
+    geometry: List[GeoPoint] = []
+    warnings: List[str] = []
+    reason: Optional[str] = None
     disclaimer: str = "AI-suggested alternate route — confirm passability with field teams before dispatch"
 
 

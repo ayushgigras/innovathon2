@@ -64,6 +64,31 @@ export interface RoadSegment {
   isDemo: true;
 }
 
+// ─── Critical Facilities & Routing ──────────────────────────────────────────
+export interface CriticalFacility {
+  id: string;
+  name: string;
+  type: "hospital" | "warehouse" | "shelter" | "police" | "relief_depot";
+  district: string;
+  location: GeoPoint;
+  operationalStatus: "operational" | "damaged" | "isolated";
+  capacity?: number;
+  isDemo: true;
+}
+
+export interface RouteOption {
+  routeId: string;
+  name: string;
+  distanceKm: number;
+  estimatedTimeMinutes: number;
+  status: "recommended" | "alternative" | "caution";
+  passable: boolean;
+  segments: string[];
+  geometry: GeoPoint[];
+  warnings?: string[];
+  reason?: string;
+}
+
 export interface Settlement {
   id: string;
   name: string;
@@ -75,7 +100,7 @@ export interface Settlement {
   accessRoads: string[]; // road segment IDs
   nearestFacility?: {
     name: string;
-    type: "hospital" | "police" | "relief_camp";
+    type: "hospital" | "police" | "relief_camp" | "warehouse";
     distanceKm: number;
   };
   isDemo: true;

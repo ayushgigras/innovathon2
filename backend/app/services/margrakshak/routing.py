@@ -3,6 +3,7 @@ from typing import List, Dict, Any, Optional
 from datetime import datetime, timezone
 from app.models.road import RoadSegment
 from app.schemas.road import RouteOption, AlternativeRoutesResponse
+from app.schemas.common import GeoPoint
 
 
 def build_road_network(roads: List[RoadSegment]) -> nx.Graph:
@@ -51,24 +52,46 @@ def find_alternative_routes(
     if "ramban" in origin.lower() or "nh-44" in (blocked_road_id or "").lower() or (blocked_road_id == "RD-001"):
         alternatives.append(
             RouteOption(
-                route_id="ALT-MUGHAL-01",
-                name="Alternate via Mughal Road (Shopian - Bafliaz - Rajouri)",
-                distance_km=142.5,
-                estimated_time_minutes=290,
-                status="passable_light_vehicles",
+                route_id="ALT-PANTHYAL-01",
+                name="Recommended Bypass: Chanderkote - Rajgarh Ridge - Ramsu",
+                distance_km=28.4,
+                estimated_time_minutes=75,
+                status="recommended",
                 passable=True,
-                segments=["Mughal Road Sector 1", "Pir Ki Gali Pass", "Bafliaz Link"],
+                segments=["Chanderkote Link Road", "Rajgarh Mountain Spine", "Khari North Detour", "Ramsu Junction"],
+                geometry=[
+                    GeoPoint(lat=33.22, lng=75.24),
+                    GeoPoint(lat=33.228, lng=75.265),
+                    GeoPoint(lat=33.245, lng=75.285),
+                    GeoPoint(lat=33.265, lng=75.295),
+                    GeoPoint(lat=33.285, lng=75.275),
+                    GeoPoint(lat=33.315, lng=75.245),
+                    GeoPoint(lat=33.345, lng=75.215),
+                ],
+                warnings=["Narrow mountain road; speed limit 25 km/h", "Cleared for 4x4 relief trucks only"],
+                reason="Bypasses the NH-44 Panthyal landslide completely; restores road access to isolated Khari Village.",
             )
         )
         alternatives.append(
             RouteOption(
-                route_id="ALT-BATOTE-02",
-                name="Secondary Link via Batote - Kishtwar road",
-                distance_km=168.0,
-                estimated_time_minutes=340,
-                status="partially_open",
+                route_id="ALT-KISHTWAR-02",
+                name="Secondary Alternate: Batote - Kishtwar - Sinthan Pass",
+                distance_km=146.0,
+                estimated_time_minutes=285,
+                status="alternative",
                 passable=True,
-                segments=["NH-244 Chenab Corridor", "Kishtwar-Sinthan Access"],
+                segments=["NH-244 Chenab Corridor", "Kishtwar Outer Ring", "Sinthan Top Pass (3750m)"],
+                geometry=[
+                    GeoPoint(lat=33.21, lng=75.26),
+                    GeoPoint(lat=33.18, lng=75.38),
+                    GeoPoint(lat=33.148, lng=75.546),
+                    GeoPoint(lat=33.23, lng=75.68),
+                    GeoPoint(lat=33.313, lng=75.771),
+                    GeoPoint(lat=33.45, lng=75.55),
+                    GeoPoint(lat=33.52, lng=75.20),
+                ],
+                warnings=["High altitude pass (3,750m); icy patches near summit", "Long transit time (+4.7 hours)"],
+                reason="Heavy convoy alternate for heavy multi-axle supply trucks unable to negotiate narrow ridge roads.",
             )
         )
     else:
