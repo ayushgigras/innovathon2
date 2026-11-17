@@ -26,10 +26,10 @@ function FitBounds(): React.ReactElement {
 }
 
 const ROAD_COLORS: Record<string, string> = {
-  closed: "#ef4444",
-  partially_open: "#f97316",
-  open: "#10b981",
-  unknown: "#64748b",
+  closed: "#c24536",
+  partially_open: "#c2781a",
+  open: "#2d6a4f",
+  unknown: "#736c5f",
 };
 
 export function MapWrapper({ roads, settlements, onSelectRoad }: MapWrapperProps): React.ReactElement {
@@ -38,7 +38,7 @@ export function MapWrapper({ roads, settlements, onSelectRoad }: MapWrapperProps
       center={[33.4, 75.2]}
       zoom={8}
       className="w-full h-full min-h-96"
-      style={{ background: "#0f172a" }}
+      style={{ background: "#e8e3d7" }}
     >
       <FitBounds />
       <TileLayer

@@ -3,6 +3,35 @@
 
 @custom-variant dark (&:is(.dark *));
 
+@theme {
+  /* Warm Beige, Off-White, Soft Green & Warm Grey Palette */
+  --color-slate-950: #FAF7F2; /* Main Page Background: Crisp Off-White / Soft Cream */
+  --color-slate-900: #F3EFE6; /* Surfaces, Cards & Sidebar: Warm Elegant Beige */
+  --color-slate-800: #E8E3D7; /* Secondary Panels & Inner Containers: Muted Warm Beige */
+  --color-slate-700: #D8D2C5; /* Borders, Dividers & Input Lines: Soft Warm Grey */
+  --color-slate-600: #A8A193; /* Subtle Icons & Secondary Borders: Medium Warm Grey */
+  --color-slate-500: #736C5F; /* Meta Text, Form Labels & Timestamps: Balanced Neutral Grey */
+  --color-slate-400: #524C41; /* Secondary Descriptions: Charcoal Grey */
+  --color-slate-300: #36322A; /* High-contrast Secondary Headings */
+  --color-slate-200: #211E18; /* Bold Section Titles */
+  --color-slate-100: #12110D; /* Primary Headings: Deep Rich Charcoal */
+  --color-slate-50: #080705;
+
+  /* Halka sa Green (Soft Mountain Sage & Forest Green) */
+  --color-emerald-500: #2D6A4F; /* Primary Action & Active Accents */
+  --color-emerald-400: #3C7D5D; /* Soft Sage Green */
+  --color-emerald-600: #21523C; /* Dark Mountain Green */
+  --color-emerald-700: #173D2C;
+  --color-emerald-800: #0F2A1E;
+  --color-emerald-900: #091B13;
+
+  /* Warm Accent Overrides */
+  --color-amber-500: #C2781A;
+  --color-amber-400: #D98824;
+  --color-red-500: #C24536;
+  --color-red-400: #D95443;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -26,20 +55,20 @@
 }
 
 :root {
-  --background: oklch(0.08 0 0);
-  --foreground: oklch(0.95 0 0);
-  --card: oklch(0.12 0 0);
-  --card-foreground: oklch(0.95 0 0);
-  --primary: oklch(0.6 0.15 155);
-  --primary-foreground: oklch(0.98 0 0);
-  --secondary: oklch(0.18 0 0);
-  --secondary-foreground: oklch(0.85 0 0);
-  --muted: oklch(0.15 0 0);
-  --muted-foreground: oklch(0.55 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 12%);
-  --ring: oklch(0.6 0.15 155);
+  --background: #FAF7F2;
+  --foreground: #12110D;
+  --card: #F3EFE6;
+  --card-foreground: #12110D;
+  --primary: #2D6A4F;
+  --primary-foreground: #FAF7F2;
+  --secondary: #E8E3D7;
+  --secondary-foreground: #12110D;
+  --muted: #E8E3D7;
+  --muted-foreground: #736C5F;
+  --destructive: #C24536;
+  --border: #D8D2C5;
+  --input: #D8D2C5;
+  --ring: #2D6A4F;
   --radius: 0.5rem;
 }
 
@@ -50,6 +79,8 @@
 
   body {
     @apply bg-slate-950 text-slate-100 antialiased;
+    background-color: #FAF7F2;
+    color: #12110D;
   }
 
   /* Leaflet fix for Next.js */
@@ -58,6 +89,7 @@
     height: 100%;
     min-height: 24rem;
     z-index: 0;
+    background-color: #E8E3D7;
   }
 
   /* Scrollbar styling */
@@ -66,13 +98,13 @@
     height: 6px;
   }
   ::-webkit-scrollbar-track {
-    background: oklch(0.1 0 0);
+    background: #F3EFE6;
   }
   ::-webkit-scrollbar-thumb {
-    background: oklch(0.25 0 0);
+    background: #D8D2C5;
     border-radius: 3px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: oklch(0.35 0 0);
+    background: #A8A193;
   }
 }
