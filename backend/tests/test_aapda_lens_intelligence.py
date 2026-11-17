@@ -410,7 +410,7 @@ def test_analyze_incident_full_pipeline_corroborated():
     assert output.assessment_status == "corroborated"
     assert "citizen_reports" in output.evidence_sources
     assert "citizen_photographs" in output.evidence_sources
-    assert "satellite_simulated" in output.evidence_sources
+    assert any(s.startswith("satellite_") for s in output.evidence_sources)
     assert "environmental_weather_station" in output.evidence_sources
     assert output.location_consistency["is_within_disaster_zone"] is True
     assert output.temporal_consistency["is_consistent"] is True

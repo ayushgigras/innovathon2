@@ -55,6 +55,7 @@
   - `AL-10`: Unified service engine `analyze_incident()` synthesizing citizen evidence, satellite passes, and environmental weather context with heuristic scoring and mandatory `requires_human_review = True` (`app/services/aapda_lens/service.py`)
   - `AL-11`: Comprehensive test suite in `backend/tests/test_aapda_lens_intelligence.py` with 27 unit tests covering all multi-source scenarios
   - `AL-12`: Real-time Open-Meteo live weather & soil saturation service (`app/services/aapda_lens/weather_service.py`) pulling precipitation rate (mm/h), cloud cover, wind gusts, and 0-1cm & 1-3cm soil moisture without API keys
+  - `AL-13`: Live European Space Agency (ESA) Copernicus Sentinel-1 SAR and Sentinel-2 optical satellite provider (`app/services/aapda_lens/satellite/copernicus_live_provider.py`) pulling actual real-time satellite telemetry without API keys
   - `FE-13`: High-resolution live satellite imagery layer (ESRI World Imagery) integrated into dashboard Leaflet map with one-click `🗺️ Street Map` ⟷ `🛰️ Live Satellite` switcher (`src/components/map/MapWrapper.tsx`)
 
 - **Verification Results:**

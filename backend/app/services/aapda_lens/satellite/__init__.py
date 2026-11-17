@@ -14,6 +14,7 @@ from app.services.aapda_lens.satellite.models import (
 )
 from app.services.aapda_lens.satellite.base import BaseSatelliteProvider
 from app.services.aapda_lens.satellite.mock_provider import MockSatelliteProvider
+from app.services.aapda_lens.satellite.copernicus_live_provider import CopernicusLiveProvider
 from app.services.aapda_lens.satellite.provider import (
     get_satellite_provider,
     set_satellite_provider,
@@ -32,6 +33,7 @@ __all__ = [
     "SatelliteCorrelationResult",
     "BaseSatelliteProvider",
     "MockSatelliteProvider",
+    "CopernicusLiveProvider",
     "get_satellite_provider",
     "set_satellite_provider",
     "correlate_satellite_evidence",
