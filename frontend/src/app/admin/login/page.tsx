@@ -20,9 +20,15 @@ export default function AdminLoginPage(): React.ReactElement {
 
     // Simulated authenticated session token
     setTimeout(() => {
+      try {
+        localStorage.setItem("aapda_admin_session", "authenticated");
+        localStorage.setItem("aapda_admin_user", username || "Commander R. Sharma (DDMA Ramban)");
+      } catch (err) {
+        console.error("Storage error:", err);
+      }
       setIsLoading(false);
       router.push("/admin/dashboard");
-    }, 600);
+    }, 500);
   };
 
   const handleQuickDemoLogin = () => {
@@ -30,8 +36,14 @@ export default function AdminLoginPage(): React.ReactElement {
     setPassword("secure_eoc_2026");
     setIsLoading(true);
     setTimeout(() => {
+      try {
+        localStorage.setItem("aapda_admin_session", "authenticated");
+        localStorage.setItem("aapda_admin_user", "Commander R. Sharma (DDMA Ramban)");
+      } catch (err) {
+        console.error("Storage error:", err);
+      }
       router.push("/admin/dashboard");
-    }, 400);
+    }, 300);
   };
 
   return (

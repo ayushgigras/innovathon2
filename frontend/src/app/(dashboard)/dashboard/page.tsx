@@ -3,45 +3,81 @@ import Link from "next/link";
 import {
   AlertTriangle,
   MapPin,
-  Package,
   Users,
-  Eye,
   Map,
   ArrowRight,
   ShieldAlert,
-  Truck,
+  Search,
+  CheckCircle2,
+  Radio,
 } from "lucide-react";
-import { DemoBadge } from "@/components/shared/DemoBadge";
-import { computeDemoStats, MOCK_INCIDENTS, MOCK_ROADS, MOCK_RELIEF_REQUESTS } from "@/lib/api/mock-adapter";
+import { computeDemoStats, MOCK_INCIDENTS, MOCK_ROADS, MOCK_ALERTS } from "@/lib/api/mock-adapter";
 
 export default function DashboardPage(): React.ReactElement {
   const stats = computeDemoStats();
-  const recentIncidents = MOCK_INCIDENTS.slice(0, 3);
-  const closedRoads = MOCK_ROADS.filter((r) => r.status === "closed" || r.status === "partially_open");
+  const recentIncidents = MOCK_INCIDENTS.slice(0, 4);
+  const activeAlert = MOCK_ALERTS[0];
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 space-y-6 max-w-6xl mx-auto">
       {/* Header */}
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-wrap items-start justify-between gap-4 pb-2 border-b border-slate-800">
         <div>
-          <h1 className="text-2xl font-bold text-slate-100">AAPDA Grid — Overview</h1>
+          <h1 className="text-2xl font-bold text-slate-100">AAPDA Grid — Citizen Portal</h1>
           <p className="text-slate-400 text-sm mt-1">
-            AI-assisted disaster intelligence for Jammu &amp; Kashmir
+            Real-time disaster intelligence, mountain road closures &amp; citizen reporting for Jammu &amp; Kashmir
           </p>
         </div>
-        <DemoBadge variant="banner" className="shrink-0 max-w-xs" />
+
+        <div className="flex items-center gap-2">
+          <Link
+            href="/dashboard/roads"
+            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 shadow-md"
+          >
+            <Map className="w-3.5 h-3.5" />
+            Open Live GIS Map
+          </Link>
+          <Link
+            href="/dashboard/incidents/report"
+            className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 shadow-md"
+          >
+            <AlertTriangle className="w-3.5 h-3.5" />
+            Report Incident
+          </Link>
+        </div>
       </div>
+
+      {/* Official Alert Banner if active */}
+      {activeAlert && (
+        <div className="p-4 bg-red-950/40 border border-red-600/50 rounded-2xl space-y-1.5">
+          <div className="flex items-center justify-between text-xs font-bold uppercase text-red-400">
+            <span className="flex items-center gap-1.5">
+              <Radio className="w-4 h-4 animate-pulse" />
+              Official Emergency Broadcast
+            </span>
+            <span className="bg-red-600 text-white px-2 py-0.2 rounded text-[10px]">VERIFIED DDMA</span>
+          </div>
+          <h3 className="font-bold text-sm text-stone-100">{activeAlert.title}</h3>
+          <p className="text-xs text-red-200">{activeAlert.message}</p>
+          <div className="pt-1 flex items-center justify-between text-[11px] text-red-300/80">
+            <span>District: <strong>{activeAlert.district}</strong></span>
+            <Link href="/dashboard/roads" className="underline font-semibold hover:text-white">
+              View Diversion Route on Map →
+            </Link>
+          </div>
+        </div>
+      )}
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <SummaryCard
-          title="Active Incidents"
+          title="Active Hazards"
           value={stats.totalIncidents}
           sub={`${stats.criticalIncidents} critical`}
           icon={AlertTriangle}
           iconColor="text-red-400"
           cardColor="border-red-500/20"
-          href="/dashboard/incidents"
+          href="/dashboard/roads"
         />
         <SummaryCard
           title="Road Closures"
@@ -53,125 +89,85 @@ export default function DashboardPage(): React.ReactElement {
           href="/dashboard/roads"
         />
         <SummaryCard
-          title="Isolated Settlements"
+          title="Cut-Off Villages"
           value={stats.isolatedSettlements}
-          sub="cut off"
+          sub="awaiting clearance"
           icon={Users}
           iconColor="text-purple-400"
           cardColor="border-purple-500/20"
           href="/dashboard/roads/settlements"
         />
         <SummaryCard
-          title="Pending Relief"
-          value={stats.pendingReliefRequests}
-          sub="requests"
-          icon={Package}
+          title="Citizen Tracking"
+          value="Track"
+          sub="check report ID"
+          icon={Search}
           iconColor="text-emerald-400"
           cardColor="border-emerald-500/20"
-          href="/dashboard/relief"
+          href="/track"
         />
       </div>
 
-      {/* Module Cards */}
+      {/* Citizen Action Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <ModuleCard
-          name="AAPDA Lens"
-          description="Incident deduplication, evidence review, uncertainty scores and human verification queue."
-          icon={Eye}
-          href="/dashboard/incidents"
-          stats={[
-            { label: "Reported", value: stats.incidentsByStatus.reported ?? 0 },
-            { label: "Under Review", value: stats.incidentsByStatus.under_review ?? 0 },
-            { label: "Verified", value: stats.incidentsByStatus.verified ?? 0 },
-          ]}
-        />
-        <ModuleCard
-          name="MargRakshak"
-          description="Mountain-road closure map, alternate routes and disconnected settlement access tracking."
+        <CitizenFeatureCard
+          title="Live Mountain Road Map"
+          description="Interactive satellite & street view showing road-following closures, landslides, and calculated Mughal Road bypass routes."
           icon={Map}
+          actionLabel="Explore Mountain Corridors"
           href="/dashboard/roads"
-          stats={[
-            { label: "Closed Roads", value: stats.roadsClosed },
-            { label: "Partial", value: stats.roadsPartiallyOpen },
-            { label: "Settlements Cut Off", value: stats.isolatedSettlements },
-          ]}
         />
-        <ModuleCard
-          name="RahatGrid"
-          description="Relief request prioritisation, inventory status, AI allocation recommendations and delivery tracking."
-          icon={Package}
-          href="/dashboard/relief"
-          stats={[
-            { label: "Pending Requests", value: stats.pendingReliefRequests },
-            { label: "Total Requests", value: MOCK_RELIEF_REQUESTS.length },
-            { label: "In Transit", value: 1 },
-          ]}
+        <CitizenFeatureCard
+          title="Citizen Incident Reporting"
+          description="Submit eyewitness reports for landslides, floods, or blocked roads. Instant Report ID generated to track DDMA review."
+          icon={AlertTriangle}
+          actionLabel="File a Disaster Report"
+          href="/dashboard/incidents/report"
+        />
+        <CitizenFeatureCard
+          title="Track Report Status"
+          description="Check official review progression from submission to field verification and emergency road response."
+          icon={Search}
+          actionLabel="Track Your Report ID"
+          href="/track"
         />
       </div>
 
-      {/* Recent Incidents */}
-      <section>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-slate-200 font-semibold text-sm flex items-center gap-2">
+      {/* Recent Public Incidents */}
+      <section className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-slate-100 font-bold text-sm flex items-center gap-2">
             <ShieldAlert className="w-4 h-4 text-red-400" />
-            Recent Incidents
-          </h2>
-          <Link
-            href="/dashboard/incidents"
-            className="text-xs text-emerald-400 hover:text-emerald-300 flex items-center gap-1 transition-colors"
-          >
-            View all <ArrowRight className="w-3 h-3" />
-          </Link>
-        </div>
-        <div className="space-y-2">
-          {recentIncidents.map((inc) => (
-            <Link
-              key={inc.id}
-              href={`/dashboard/incidents`}
-              className="flex items-center gap-4 p-3 bg-slate-900 border border-slate-800 rounded-lg hover:border-slate-700 transition-colors"
-            >
-              <SeverityDot severity={inc.severity} />
-              <div className="flex-1 min-w-0">
-                <p className="text-slate-200 text-sm font-medium truncate">{inc.title}</p>
-                <p className="text-slate-500 text-xs">{inc.district} · {formatRelative(inc.reportedAt)}</p>
-              </div>
-              <span className={`text-xs px-2 py-0.5 rounded border ${statusColor(inc.status)}`}>
-                {inc.status.replace("_", " ")}
-              </span>
-            </Link>
-          ))}
-        </div>
-      </section>
-
-      {/* Road Alerts */}
-      <section>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-slate-200 font-semibold text-sm flex items-center gap-2">
-            <MapPin className="w-4 h-4 text-orange-400" />
-            Road Alerts
+            Reported Disasters in Jammu &amp; Kashmir
           </h2>
           <Link
             href="/dashboard/roads"
             className="text-xs text-emerald-400 hover:text-emerald-300 flex items-center gap-1 transition-colors"
           >
-            View map <ArrowRight className="w-3 h-3" />
+            View on Live Map <ArrowRight className="w-3 h-3" />
           </Link>
         </div>
+
         <div className="space-y-2">
-          {closedRoads.map((road) => (
-            <div
-              key={road.id}
-              className="flex items-center gap-4 p-3 bg-slate-900 border border-slate-800 rounded-lg"
+          {recentIncidents.map((inc) => (
+            <Link
+              key={inc.id}
+              href="/dashboard/roads"
+              className="flex items-center justify-between gap-4 p-3 bg-slate-950/60 border border-slate-800 rounded-xl hover:border-slate-700 transition-colors"
             >
-              <Truck className={`w-4 h-4 flex-shrink-0 ${road.status === "closed" ? "text-red-400" : "text-orange-400"}`} />
-              <div className="flex-1 min-w-0">
-                <p className="text-slate-200 text-sm font-medium truncate">{road.name}</p>
-                <p className="text-slate-500 text-xs">{road.closureReason} · {road.district}</p>
+              <div className="flex items-center gap-3">
+                <span className={`w-2 h-2 rounded-full ${inc.severity === "critical" ? "bg-red-500" : "bg-amber-500"}`} />
+                <div>
+                  <p className="text-slate-200 text-xs font-bold">{inc.title}</p>
+                  <p className="text-slate-500 text-[11px]">{inc.district} Sector · {new Date(inc.reportedAt).toLocaleTimeString()}</p>
+                </div>
               </div>
-              <span className={`text-xs px-2 py-0.5 rounded border ${road.status === "closed" ? "bg-red-500/10 text-red-400 border-red-500/30" : "bg-orange-500/10 text-orange-400 border-orange-500/30"}`}>
-                {road.status === "closed" ? "Closed" : "Partial"}
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${
+                inc.status === "verified" ? "bg-emerald-500/20 text-emerald-400" : "bg-amber-500/20 text-amber-400"
+              }`}>
+                {inc.status.replace("_", " ")}
               </span>
-            </div>
+            </Link>
           ))}
         </div>
       </section>
@@ -179,99 +175,68 @@ export default function DashboardPage(): React.ReactElement {
   );
 }
 
-// ─── Helper Sub-components ────────────────────────────────────────────────────
-
-interface SummaryCardProps {
+function SummaryCard({
+  title,
+  value,
+  sub,
+  icon: Icon,
+  iconColor,
+  cardColor,
+  href,
+}: {
   title: string;
-  value: number;
+  value: number | string;
   sub: string;
   icon: React.ElementType;
   iconColor: string;
   cardColor: string;
   href: string;
-}
-
-function SummaryCard({ title, value, sub, icon: Icon, iconColor, cardColor, href }: SummaryCardProps): React.ReactElement {
+}) {
   return (
     <Link
       href={href}
-      className={`flex flex-col gap-3 p-4 bg-slate-900 border ${cardColor} rounded-xl hover:bg-slate-800/80 transition-colors group`}
+      className={`block p-4 rounded-2xl bg-slate-900 border ${cardColor} hover:border-slate-700 transition-all shadow-md group`}
     >
       <div className="flex items-center justify-between">
-        <span className="text-slate-400 text-xs font-medium uppercase tracking-wide">{title}</span>
-        <Icon className={`w-4 h-4 ${iconColor}`} aria-hidden="true" />
+        <span className="text-xs text-slate-400 font-semibold">{title}</span>
+        <Icon className={`w-4 h-4 ${iconColor} group-hover:scale-110 transition-transform`} />
       </div>
-      <div>
-        <p className="text-3xl font-bold text-slate-100">{value}</p>
-        <p className="text-slate-500 text-xs mt-0.5">{sub}</p>
-      </div>
-      <DemoBadge />
+      <p className="text-2xl font-black text-slate-100 mt-2">{value}</p>
+      <p className="text-[11px] text-slate-500 mt-0.5">{sub}</p>
     </Link>
   );
 }
 
-interface ModuleCardProps {
-  name: string;
+function CitizenFeatureCard({
+  title,
+  description,
+  icon: Icon,
+  actionLabel,
+  href,
+}: {
+  title: string;
   description: string;
   icon: React.ElementType;
+  actionLabel: string;
   href: string;
-  stats: { label: string; value: number }[];
-}
-
-function ModuleCard({ name, description, icon: Icon, href, stats }: ModuleCardProps): React.ReactElement {
+}) {
   return (
-    <Link
-      href={href}
-      className="flex flex-col gap-4 p-5 bg-slate-900 border border-slate-800 rounded-xl hover:border-emerald-500/30 hover:bg-slate-800/60 transition-all group"
-    >
-      <div className="flex items-center gap-3">
-        <div className="p-2 bg-emerald-500/10 rounded-lg">
-          <Icon className="w-5 h-5 text-emerald-400" aria-hidden="true" />
+    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col justify-between space-y-3 shadow-md">
+      <div className="space-y-2">
+        <div className="p-2.5 bg-slate-800 w-fit rounded-xl text-emerald-400">
+          <Icon className="w-5 h-5" />
         </div>
-        <h3 className="text-slate-100 font-semibold">{name}</h3>
+        <h3 className="font-bold text-sm text-slate-100">{title}</h3>
+        <p className="text-xs text-slate-400 leading-relaxed">{description}</p>
       </div>
-      <p className="text-slate-400 text-sm leading-relaxed">{description}</p>
-      <div className="grid grid-cols-3 gap-2 mt-auto">
-        {stats.map((s) => (
-          <div key={s.label} className="text-center">
-            <p className="text-xl font-bold text-slate-100">{s.value}</p>
-            <p className="text-slate-500 text-[10px] leading-tight">{s.label}</p>
-          </div>
-        ))}
-      </div>
-      <div className="flex items-center gap-1 text-emerald-400 text-xs font-medium group-hover:gap-2 transition-all">
-        Open module <ArrowRight className="w-3 h-3" />
-      </div>
-    </Link>
+
+      <Link
+        href={href}
+        className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-400 hover:text-emerald-300 pt-1"
+      >
+        <span>{actionLabel}</span>
+        <ArrowRight className="w-3.5 h-3.5" />
+      </Link>
+    </div>
   );
-}
-
-function SeverityDot({ severity }: { severity: string }): React.ReactElement {
-  const colors: Record<string, string> = {
-    critical: "bg-red-500",
-    high: "bg-orange-500",
-    medium: "bg-yellow-500",
-    low: "bg-blue-500",
-  };
-  return <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${colors[severity] ?? "bg-slate-500"}`} />;
-}
-
-function statusColor(status: string): string {
-  const map: Record<string, string> = {
-    reported: "bg-blue-500/10 text-blue-400 border-blue-500/30",
-    under_review: "bg-purple-500/10 text-purple-400 border-purple-500/30",
-    verified: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",
-    closed: "bg-slate-500/10 text-slate-400 border-slate-500/30",
-    duplicate: "bg-orange-500/10 text-orange-400 border-orange-500/30",
-  };
-  return map[status] ?? "bg-slate-500/10 text-slate-400 border-slate-500/30";
-}
-
-function formatRelative(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  return `${Math.floor(hrs / 24)}d ago`;
 }
