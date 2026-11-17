@@ -6,6 +6,7 @@ import {
   TileLayer,
   CircleMarker,
   Popup,
+  Tooltip,
   useMap,
   useMapEvents,
 } from "react-leaflet";
@@ -23,7 +24,23 @@ import {
   Sun,
   Eye,
   CheckCircle2,
+  Map,
 } from "lucide-react";
+
+// Major Cities in Jammu & Kashmir with coordinates for permanent on-map city labelling
+export const MAJOR_CITIES = [
+  { name: "Jammu (Raghunath Market)", lat: 32.7291, lng: 74.8643, isPrimary: true },
+  { name: "Srinagar (Summer Capital)", lat: 34.0837, lng: 74.7973, isPrimary: true },
+  { name: "Ramban", lat: 33.2440, lng: 75.2580 },
+  { name: "Banihal", lat: 33.5000, lng: 75.2000 },
+  { name: "Katra (Vaishno Devi)", lat: 32.9900, lng: 74.9500 },
+  { name: "Udhampur", lat: 32.9250, lng: 75.1400 },
+  { name: "Doda", lat: 33.1480, lng: 75.5460 },
+  { name: "Kishtwar", lat: 33.3100, lng: 75.7600 },
+  { name: "Shopian", lat: 33.7200, lng: 74.8300 },
+  { name: "Anantnag", lat: 33.7300, lng: 75.1500 },
+  { name: "Khari Village", lat: 33.2800, lng: 75.2850 },
+];
 
 // Preset Search Hotspots
 export const PRESET_WEATHER_LOCATIONS = [
@@ -74,10 +91,16 @@ function MapClickHandler({ onSelect }: { onSelect: (lat: number, lng: number) =>
   return null;
 }
 
+// Map size and pan/zoom controller with automatic size recalculation for hidden tabs
 function MapViewController({ center, zoom }: { center: [number, number]; zoom: number }) {
   const map = useMap();
   useEffect(() => {
+    map.invalidateSize();
     map.setView(center, zoom, { animate: true });
+    const timer = setTimeout(() => {
+      map.invalidateSize();
+    }, 200);
+    return () => clearTimeout(timer);
   }, [map, center, zoom]);
   return null;
 }
@@ -86,8 +109,12 @@ export function WeatherExplorer(): React.ReactElement {
   // Active selected location - Defaults to Raghunath Market, Jammu
   const [selectedPlaceName, setSelectedPlaceName] = useState("Raghunath Market, Jammu");
   const [coords, setCoords] = useState<{ lat: number; lng: number }>({ lat: 32.7291, lng: 74.8643 });
+  const [zoomLevel, setZoomLevel] = useState<number>(13);
   const [searchQuery, setSearchQuery] = useState("");
   const [showMapPicker, setShowMapPicker] = useState(true);
+
+  // Basemap Mode: "street" shows full OpenStreetMap with all street and city names, "hybrid" shows satellite + ESRI/Carto city labels
+  const [mapLayerMode, setMapLayerMode] = useState<"street" | "hybrid">("street");
 
   // Weather Telemetry State
   const [weatherData, setWeatherData] = useState<any>(null);
@@ -152,6 +179,7 @@ export function WeatherExplorer(): React.ReactElement {
   // Handle Preset Select
   const handleSelectPreset = (loc: typeof PRESET_WEATHER_LOCATIONS[0]) => {
     setCoords({ lat: loc.lat, lng: loc.lng });
+    setZoomLevel(13);
     fetchWeather(loc.lat, loc.lng, loc.name);
     setSearchQuery("");
   };
@@ -176,11 +204,21 @@ export function WeatherExplorer(): React.ReactElement {
       return;
     }
 
+    // Check major cities
+    const cityMatch = MAJOR_CITIES.find((c) => c.name.toLowerCase().includes(query));
+    if (cityMatch) {
+      setCoords({ lat: cityMatch.lat, lng: cityMatch.lng });
+      setZoomLevel(13);
+      fetchWeather(cityMatch.lat, cityMatch.lng, cityMatch.name);
+      return;
+    }
+
     // Try parsing coordinate string like "32.72, 74.86"
     const coordParts = query.split(",").map((s) => parseFloat(s.trim()));
     if (coordParts.length === 2 && !isNaN(coordParts[0]) && !isNaN(coordParts[1])) {
       const [lat, lng] = coordParts;
       setCoords({ lat, lng });
+      setZoomLevel(13);
       fetchWeather(lat, lng, `Custom Coords (${lat.toFixed(3)}°N, ${lng.toFixed(3)}°E)`);
       return;
     }
@@ -199,7 +237,6 @@ export function WeatherExplorer(): React.ReactElement {
     } else if (query.includes("doda")) {
       handleSelectPreset(PRESET_WEATHER_LOCATIONS[5]);
     } else {
-      // Default to coordinates near Jammu
       handleSelectPreset(PRESET_WEATHER_LOCATIONS[0]);
     }
   };
@@ -277,7 +314,7 @@ export function WeatherExplorer(): React.ReactElement {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search Indian place (e.g. Raghunath Market Jammu, Ramban, Banihal, Doda) or enter lat,lng..."
+              placeholder="Search Indian city / place (e.g. Jammu, Raghunath Market, Ramban, Katra, Srinagar) or enter lat,lng..."
               className="w-full pl-9 pr-3 py-2 bg-stone-950 border border-stone-800 rounded-xl text-stone-100 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500"
             />
           </div>
@@ -314,37 +351,125 @@ export function WeatherExplorer(): React.ReactElement {
         </div>
       </div>
 
-      {/* ── Interactive Leaflet Point Picker Map ─────────────────────────── */}
+      {/* ── Interactive Leaflet Point Picker Map with City Labelling ───────── */}
       {showMapPicker && (
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between text-xs text-stone-400">
-            <span className="flex items-center gap-1 font-medium">
+        <div className="space-y-2">
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+            <span className="flex items-center gap-1 text-stone-300 font-medium">
               <Compass className="w-3.5 h-3.5 text-emerald-400" />
-              Click anywhere on the map to pin coordinates &amp; retrieve live Open-Meteo weather
+              Click anywhere on the map or click a city badge to fetch live Open-Meteo weather
             </span>
-            <span className="text-[10px] text-stone-500">Leaflet GIS View</span>
+
+            {/* Basemap Switcher: Street Map vs Hybrid Satellite with Labels */}
+            <div className="flex bg-stone-950 border border-stone-800 rounded-lg p-0.5 text-xs font-medium">
+              <button
+                type="button"
+                onClick={() => setMapLayerMode("street")}
+                className={`px-2.5 py-1 rounded-md transition-all flex items-center gap-1 text-[11px] ${
+                  mapLayerMode === "street"
+                    ? "bg-emerald-600 text-white font-bold shadow-sm"
+                    : "text-stone-400 hover:text-stone-200"
+                }`}
+              >
+                <Map className="w-3 h-3" />
+                Street Map (Clear City &amp; Road Names)
+              </button>
+              <button
+                type="button"
+                onClick={() => setMapLayerMode("hybrid")}
+                className={`px-2.5 py-1 rounded-md transition-all flex items-center gap-1 text-[11px] ${
+                  mapLayerMode === "hybrid"
+                    ? "bg-emerald-600 text-white font-bold shadow-sm"
+                    : "text-stone-400 hover:text-stone-200"
+                }`}
+              >
+                <Layers className="w-3 h-3" />
+                Satellite + City Labels
+              </button>
+            </div>
           </div>
 
-          <div className="h-64 w-full rounded-xl overflow-hidden border border-stone-800 shadow-inner relative">
+          <div className="h-80 w-full rounded-xl overflow-hidden border border-stone-800 shadow-inner relative">
             <MapContainer
               center={[coords.lat, coords.lng]}
-              zoom={11}
+              zoom={zoomLevel}
               className="h-full w-full"
               style={{ background: "#1c2421" }}
             >
-              <MapViewController center={[coords.lat, coords.lng]} zoom={11} />
+              <MapViewController center={[coords.lat, coords.lng]} zoom={zoomLevel} />
               <MapClickHandler onSelect={handleMapClick} />
-              <TileLayer
-                attribution='Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics'
-                url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-                maxZoom={18}
-              />
+
+              {/* Layer 1: Base Tiles */}
+              {mapLayerMode === "street" ? (
+                <TileLayer
+                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  maxZoom={19}
+                />
+              ) : (
+                <>
+                  {/* High-res satellite imagery */}
+                  <TileLayer
+                    attribution='Tiles &copy; Esri &mdash; Source: Esri, Maxar'
+                    url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+                    maxZoom={18}
+                  />
+                  {/* Official ESRI World Boundaries and Places Reference Overlay */}
+                  <TileLayer
+                    attribution='Labels &copy; Esri'
+                    url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}"
+                    maxZoom={18}
+                  />
+                  {/* CartoDB Voyager High-Contrast City & Town Labels */}
+                  <TileLayer
+                    attribution='&copy; CARTO'
+                    url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png"
+                    maxZoom={18}
+                  />
+                </>
+              )}
+
+              {/* Permanent Major City Labels across Jammu & Kashmir */}
+              {MAJOR_CITIES.map((city) => {
+                const isCurrent = Math.abs(city.lat - coords.lat) < 0.05 && Math.abs(city.lng - coords.lng) < 0.05;
+                return (
+                  <CircleMarker
+                    key={city.name}
+                    center={[city.lat, city.lng]}
+                    radius={isCurrent ? 8 : city.isPrimary ? 6 : 4}
+                    pathOptions={{
+                      color: isCurrent ? "#10b981" : "#1e293b",
+                      fillColor: isCurrent ? "#34d399" : "#f8fafc",
+                      fillOpacity: 0.95,
+                      weight: isCurrent ? 3 : 2,
+                    }}
+                    eventHandlers={{
+                      click: () => {
+                        setCoords({ lat: city.lat, lng: city.lng });
+                        setZoomLevel(13);
+                        fetchWeather(city.lat, city.lng, city.name);
+                      },
+                    }}
+                  >
+                    <Tooltip
+                      permanent
+                      direction="top"
+                      offset={[0, -6]}
+                      className="text-[11px] font-bold shadow-md"
+                    >
+                      <span>🏙️ {city.name}</span>
+                    </Tooltip>
+                  </CircleMarker>
+                );
+              })}
+
+              {/* Selected Position Indicator Marker */}
               <CircleMarker
                 center={[coords.lat, coords.lng]}
-                radius={9}
+                radius={11}
                 pathOptions={{
-                  color: "#10b981",
-                  fillColor: "#34d399",
+                  color: "#dc2626",
+                  fillColor: "#ef4444",
                   fillOpacity: 0.9,
                   weight: 3,
                 }}
@@ -352,7 +477,7 @@ export function WeatherExplorer(): React.ReactElement {
                 <Popup>
                   <div className="text-xs space-y-1">
                     <p className="font-bold text-stone-900">{selectedPlaceName}</p>
-                    <p className="text-stone-600">[{coords.lat.toFixed(4)}, {coords.lng.toFixed(4)}]</p>
+                    <p className="text-stone-600">[{coords.lat.toFixed(4)}°N, {coords.lng.toFixed(4)}°E]</p>
                     <p className="text-emerald-700 font-semibold">{current.temperature_2m}°C, {weatherInfo.label}</p>
                   </div>
                 </Popup>
