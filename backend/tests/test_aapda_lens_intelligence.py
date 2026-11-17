@@ -31,6 +31,7 @@ from app.services.aapda_lens import (
     SatelliteObservation,
     SatellitePlatform,
     SensorType,
+    get_live_weather,
 )
 
 
@@ -432,3 +433,30 @@ def test_analyze_incident_unverified_sparse():
     assert output.assessment_status in ("needs_field_dispatch", "unverified")
     assert output.confidence_score <= 0.50
     assert output.evidence_quality["quality_label"] == "low"
+
+
+# ============================================================================
+# 7. Open-Meteo Live Weather & Soil Moisture Service Tests
+# ============================================================================
+
+def test_open_meteo_live_weather_service():
+    weather = get_live_weather(33.245, 75.240)
+
+    assert weather["status"] in ("live", "offline_fallback")
+    assert "temperature_c" in weather
+    assert "precipitation_mm_per_hour" in weather
+    assert "cloud_cover_pct" in weather
+    assert "soil_moisture_0_to_1cm" in weather
+    assert "soil_moisture_1_to_3cm" in weather
+    assert weather["landslide_weather_risk"] in ("low", "moderate", "high", "critical")
+    assert len(weather["reasons"]) > 0
+
+
+def test_open_meteo_weather_service_resilience():
+    # Negative extreme timeout to test graceful fallback
+    weather = get_live_weather(33.245, 75.240, timeout_seconds=0.00001)
+
+    assert weather["status"] == "offline_fallback"
+    assert "precipitation_mm_per_hour" in weather
+    assert weather["landslide_weather_risk"] == "low"
+    assert "fallback" in weather["source"].lower()

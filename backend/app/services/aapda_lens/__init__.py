@@ -49,12 +49,16 @@ from app.services.aapda_lens.service import (
     analyze_incident,
     LensAnalysisOutput,
 )
+from app.services.aapda_lens.weather_service import (
+    get_live_weather,
+)
 
 __all__ = [
     # Main Service Interface
     "analyze_incident",
     "LensAnalysisOutput",
     "analyze_incident_verification",
+    "get_live_weather",
     # Spatial & Location
     "haversine_distance_km",
     "check_gps_mismatch",

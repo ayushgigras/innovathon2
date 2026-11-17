@@ -53,12 +53,14 @@
   - `AL-08`: Spatiotemporal satellite correlation engine handling supporting observations, conflicting radar observations, cloud cover/insufficient quality, and no coverage cases (`app/services/aapda_lens/satellite/correlation.py`)
   - `AL-09`: Proactive automated satellite monitoring alerts clearly tagged with `DataProvenance.SIMULATED` (`app/services/aapda_lens/satellite/mock_provider.py`)
   - `AL-10`: Unified service engine `analyze_incident()` synthesizing citizen evidence, satellite passes, and environmental weather context with heuristic scoring and mandatory `requires_human_review = True` (`app/services/aapda_lens/service.py`)
-  - `AL-11`: Comprehensive test suite in `backend/tests/test_aapda_lens_intelligence.py` with 25 unit tests covering all multi-source scenarios
+  - `AL-11`: Comprehensive test suite in `backend/tests/test_aapda_lens_intelligence.py` with 27 unit tests covering all multi-source scenarios
+  - `AL-12`: Real-time Open-Meteo live weather & soil saturation service (`app/services/aapda_lens/weather_service.py`) pulling precipitation rate (mm/h), cloud cover, wind gusts, and 0-1cm & 1-3cm soil moisture without API keys
+  - `FE-13`: High-resolution live satellite imagery layer (ESRI World Imagery) integrated into dashboard Leaflet map with one-click `🗺️ Street Map` ⟷ `🛰️ Live Satellite` switcher (`src/components/map/MapWrapper.tsx`)
 
 - **Verification Results:**
-  - `npm run lint` (frontend) — Passed with **0 errors, 0 warnings**
+  - `npm run lint` (frontend) — Passed with **0 errors, 1 warning (postcss export)**
   - `npm run build` (frontend) — Passed with **0 errors**, all 11 static routes generated
-  - `python -m pytest` (backend) — Passed with **59/59 tests passing** in < 1.0s (health, incidents, roads, routes, settlements, relief, allocations, deliveries, verification, text similarity, image hashing, EXIF, temporal staleness, GPS mismatch, satellite correlation, proactive alerts, and end-to-end multi-source analysis)
+  - `python -m pytest` (backend) — Passed with **61/61 tests passing** (health, incidents, roads, routes, settlements, relief, allocations, deliveries, verification, text similarity, image hashing, EXIF, temporal staleness, GPS mismatch, satellite correlation, proactive alerts, live Open-Meteo weather, and end-to-end multi-source analysis)
   - `Uvicorn` server running live on `http://localhost:8000` (docs at `http://localhost:8000/docs`)
   - `Next.js` server running live on `http://localhost:3000`
 

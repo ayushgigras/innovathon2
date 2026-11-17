@@ -41,6 +41,7 @@ from app.services.aapda_lens.satellite.base import BaseSatelliteProvider
 from app.services.aapda_lens.satellite.provider import get_satellite_provider
 from app.services.aapda_lens.satellite.correlation import correlate_satellite_evidence
 from app.services.aapda_lens.satellite.models import ObservationStatus
+from app.services.aapda_lens.weather_service import get_live_weather
 
 
 class LensAnalysisOutput(BaseModel):
@@ -231,25 +232,42 @@ def analyze_incident(
 
     satellite_correlation_dict = sat_res.model_dump()
 
-    # 7. Environmental & Geographic Context
+    # 7. Environmental & Geographic Weather Context (Open-Meteo Live API)
     environmental_correlation: Dict[str, Any] = {
         "has_context": False,
         "rainfall_risk": "unknown",
         "weather_alignment": "unverified",
     }
-    if environmental_context:
+    
+    # If no manual environmental context supplied, query live Open-Meteo API
+    env_data = environmental_context
+    if env_data is None:
+        try:
+            env_data = get_live_weather(rep_lat, rep_lng)
+        except Exception:
+            env_data = None
+
+    if env_data:
         environmental_correlation["has_context"] = True
-        evidence_sources.append("environmental_weather_station")
-        rainfall_mm = environmental_context.get("rainfall_mm_per_hour", 0.0)
+        source_name = env_data.get("source", "environmental_weather_station")
+        evidence_sources.append(source_name)
+        environmental_correlation["weather_details"] = env_data
         
-        if rainfall_mm > 30.0:
-            environmental_correlation["rainfall_risk"] = "critical_torrential"
-            reasons.append(f"Weather sensors confirm torrential rainfall ({rainfall_mm:.1f} mm/h), elevating landslide hazard.")
+        rainfall_mm = env_data.get("precipitation_mm_per_hour", 0.0)
+        risk = env_data.get("landslide_weather_risk")
+        if risk:
+            environmental_correlation["rainfall_risk"] = risk
+        elif rainfall_mm > 30.0:
+            environmental_correlation["rainfall_risk"] = "critical"
         elif rainfall_mm > 10.0:
-            environmental_correlation["rainfall_risk"] = "elevated_moderate"
-            reasons.append(f"Moderate precipitation ({rainfall_mm:.1f} mm/h) recorded in sector.")
+            environmental_correlation["rainfall_risk"] = "high"
+        elif rainfall_mm > 2.0:
+            environmental_correlation["rainfall_risk"] = "moderate"
         else:
-            environmental_correlation["rainfall_risk"] = "low_or_none"
+            environmental_correlation["rainfall_risk"] = "low"
+
+        if env_data.get("reasons"):
+            reasons.extend(env_data["reasons"])
 
     # 8. Heuristic Confidence Scoring (Safety: NOT statistical probability)
     # Baseline confidence starts at 0.50
