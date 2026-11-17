@@ -1,8 +1,8 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   ShieldAlert,
   ArrowLeft,
@@ -17,7 +17,7 @@ import {
   Package,
   Truck,
   Sparkles,
-  FileText,
+  Lock,
 } from "lucide-react";
 import { DemoBadge } from "@/components/shared/DemoBadge";
 
@@ -40,6 +40,59 @@ export default function AdminLayout({
   children: React.ReactNode;
 }): React.ReactElement {
   const pathname = usePathname();
+  const router = useRouter();
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const [officerName, setOfficerName] = useState<string>("Commander R. Sharma (DDMA Ramban)");
+
+  const isLoginPage = pathname === "/admin/login";
+
+  useEffect(() => {
+    if (isLoginPage) {
+      setIsAuthenticated(true);
+      return;
+    }
+    const session = typeof window !== "undefined" ? localStorage.getItem("aapda_admin_session") : null;
+    const user = typeof window !== "undefined" ? localStorage.getItem("aapda_admin_user") : null;
+    if (session === "authenticated") {
+      setIsAuthenticated(true);
+      if (user) setOfficerName(user);
+    } else {
+      setIsAuthenticated(false);
+      router.replace("/admin/login");
+    }
+  }, [pathname, isLoginPage, router]);
+
+  const handleLogout = () => {
+    try {
+      localStorage.removeItem("aapda_admin_session");
+      localStorage.removeItem("aapda_admin_user");
+    } catch (e) {
+      console.error(e);
+    }
+    router.replace("/admin/login");
+  };
+
+  // If on login page, render child directly without top command header
+  if (isLoginPage) {
+    return <>{children}</>;
+  }
+
+  // If verifying authentication, render secure splash gate
+  if (isAuthenticated === null || isAuthenticated === false) {
+    return (
+      <div className="min-h-screen bg-stone-950 flex flex-col items-center justify-center p-6 text-stone-300 space-y-4">
+        <div className="p-3 bg-red-600/20 border border-red-600/40 rounded-2xl text-red-500 animate-pulse">
+          <Lock className="w-8 h-8" />
+        </div>
+        <p className="text-sm font-semibold tracking-wide">
+          Verifying EOC Administrative Credentials...
+        </p>
+        <p className="text-xs text-stone-500">
+          Redirecting to authorized login terminal if unauthenticated
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-stone-950 text-stone-100 flex flex-col">
@@ -69,7 +122,7 @@ export default function AdminLayout({
           <DemoBadge variant="inline" />
           <div className="hidden md:flex items-center gap-2 px-3 py-1 bg-stone-800 border border-stone-700 rounded-lg text-xs">
             <ShieldCheck className="w-4 h-4 text-emerald-400" />
-            <span className="text-stone-300">Commander: <strong>R. Sharma (DDMA Ramban)</strong></span>
+            <span className="text-stone-300">Commander: <strong>{officerName}</strong></span>
           </div>
 
           <Link
@@ -80,13 +133,13 @@ export default function AdminLayout({
             Public View
           </Link>
 
-          <Link
-            href="/admin/login"
+          <button
+            onClick={handleLogout}
             className="flex items-center gap-1 px-2.5 py-1.5 bg-red-950/40 hover:bg-red-900/40 text-red-400 border border-red-800/60 rounded-lg text-xs font-medium transition-colors"
           >
             <LogOut className="w-3.5 h-3.5" />
             Logout
-          </Link>
+          </button>
         </div>
       </header>
 
