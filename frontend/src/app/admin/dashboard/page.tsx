@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import {
   ShieldAlert,
   AlertTriangle,
@@ -20,6 +21,19 @@ import {
   RefreshCw,
   FileCheck,
 } from "lucide-react";
+
+const WeatherExplorer = dynamic(
+  () => import("@/components/weather/WeatherExplorer").then((mod) => mod.WeatherExplorer),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="bg-stone-900 border border-stone-800 rounded-2xl p-6 text-center text-xs text-stone-400">
+        <RefreshCw className="w-5 h-5 text-emerald-400 mx-auto animate-spin mb-2" />
+        Loading Live Open-Meteo Weather Explorer...
+      </div>
+    ),
+  }
+);
 import {
   MOCK_INCIDENTS,
   MOCK_ROADS,
@@ -695,51 +709,32 @@ export default function AdminDashboardPage(): React.ReactElement {
 
       {/* ── TAB 5: WEATHER & SATELLITE STATUS ─────────────────────────────── */}
       {activeTab === "monitoring" && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="bg-stone-900 border border-stone-800 rounded-2xl p-5 space-y-3">
-            <h3 className="text-sm font-bold text-stone-100 flex items-center gap-2">
-              <RefreshCw className="w-4 h-4 text-emerald-400" />
-              Open-Meteo Coordinate Weather Feed
-            </h3>
-            <p className="text-xs text-stone-400">
-              Live hourly forecast &amp; soil moisture telemetry active for Jammu &amp; Kashmir sector (33.25°N, 75.25°E).
-            </p>
-            <div className="p-3 bg-stone-950 border border-stone-800 rounded-xl space-y-1 text-xs">
-              <div className="flex justify-between">
-                <span className="text-stone-400">Precipitation:</span>
-                <span className="text-emerald-400 font-bold">38.4 mm (High Rain Alert)</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-stone-400">Soil Moisture (0-3cm):</span>
-                <span className="text-amber-400 font-bold">0.42 m³/m³ (Saturation Near Limit)</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-stone-400">Wind Gusts (10m):</span>
-                <span className="text-stone-200 font-bold">42 km/h</span>
-              </div>
-            </div>
-          </div>
+        <div className="space-y-6">
+          <WeatherExplorer />
 
           <div className="bg-stone-900 border border-stone-800 rounded-2xl p-5 space-y-3">
             <h3 className="text-sm font-bold text-stone-100 flex items-center gap-2">
               <Layers className="w-4 h-4 text-purple-400" />
-              ESA Copernicus Satellite Pass Status
+              ESA Copernicus Satellite Pass Status &amp; Change Detection
             </h3>
             <p className="text-xs text-stone-400">
               Live Open OData query for Sentinel-2 MSI optical &amp; Sentinel-1 SAR imagery.
             </p>
-            <div className="p-3 bg-stone-950 border border-stone-800 rounded-xl space-y-1 text-xs">
-              <div className="flex justify-between">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+              <div className="p-3 bg-stone-950 border border-stone-800 rounded-xl space-y-1 text-xs">
                 <span className="text-stone-400">Sentinel-2 Pass:</span>
-                <span className="text-purple-400 font-bold">Acquired ~4 hrs ago</span>
+                <p className="text-purple-400 font-bold text-sm">Acquired ~4 hrs ago</p>
+                <span className="text-[10px] text-stone-500">10m Ground Resolution (Pass Validated)</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-stone-400">Cloud Cover:</span>
-                <span className="text-stone-200 font-bold">18% (Clear over Chenab Gorge)</span>
+              <div className="p-3 bg-stone-950 border border-stone-800 rounded-xl space-y-1 text-xs">
+                <span className="text-stone-400">Optical Cloud Cover:</span>
+                <p className="text-stone-100 font-bold text-sm">18% (Clear over Jammu &amp; Chenab)</p>
+                <span className="text-[10px] text-stone-500">Direct Optical Visibility Confirmed</span>
               </div>
-              <div className="flex justify-between">
+              <div className="p-3 bg-stone-950 border border-stone-800 rounded-xl space-y-1 text-xs">
                 <span className="text-stone-400">Change Detection:</span>
-                <span className="text-red-400 font-bold">Surface Scar Detected at Panthyal</span>
+                <p className="text-red-400 font-bold text-sm">Surface Scar Detected at Panthyal</p>
+                <span className="text-[10px] text-stone-500">NDVI / Band Ratio Difference</span>
               </div>
             </div>
           </div>
