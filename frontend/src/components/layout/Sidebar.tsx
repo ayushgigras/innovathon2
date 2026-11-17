@@ -42,6 +42,11 @@ const NAV_GROUPS: (NavItem | NavGroup)[] = [
     icon: LayoutDashboard,
   },
   {
+    label: "Admin Control Room",
+    href: "/admin/dashboard",
+    icon: Shield,
+  },
+  {
     group: "AAPDA Lens",
     icon: Eye,
     items: [

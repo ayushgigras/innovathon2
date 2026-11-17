@@ -39,6 +39,7 @@ const MapWrapper = dynamic(
 );
 
 export default function RoadsPage(): React.ReactElement {
+  const [incidentsList, setIncidentsList] = useState<Incident[]>(MOCK_INCIDENTS);
   const [selectedRoad, setSelectedRoad] = useState<RoadSegment | null>(
     MOCK_ROADS.find((r) => r.id === "RD-001") ?? null
   );
@@ -238,7 +239,7 @@ export default function RoadsPage(): React.ReactElement {
             roads={MOCK_ROADS}
             settlements={MOCK_SETTLEMENTS}
             facilities={MOCK_FACILITIES}
-            incidents={MOCK_INCIDENTS}
+            incidents={incidentsList}
             alternativeRoutes={MOCK_ALTERNATIVE_ROUTES}
             selectedRoad={selectedRoad}
             selectedIncident={selectedIncident}
@@ -247,6 +248,10 @@ export default function RoadsPage(): React.ReactElement {
             onSelectIncident={handleSelectIncident}
             onSelectRoute={(rt) => setSelectedRoute(rt)}
             onRequestAlternativeRoute={handleRequestAlternateRoute}
+            onReportCreated={(newInc) => {
+              setIncidentsList((prev) => [newInc, ...prev]);
+              setSelectedIncident(newInc);
+            }}
           />
         </div>
 

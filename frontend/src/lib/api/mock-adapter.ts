@@ -11,6 +11,7 @@ import type {
   ReliefItem,
   Delivery,
   DemoStats,
+  PublicAlert,
 } from "@/types";
 
 // ─── Incidents ────────────────────────────────────────────────────────────────
@@ -644,6 +645,109 @@ export const MOCK_DELIVERIES: Delivery[] = [
 ];
 
 // ─── Computed Stats ───────────────────────────────────────────────────────────
+export const MOCK_ALERTS: PublicAlert[] = [
+  {
+    id: "ALT-001",
+    title: "CRITICAL: NH-44 Landslide at Panthyal — Highway Blocked",
+    message: "Debris and shooting stones have completely blocked NH-44 between Ramban and Banihal. Diversion active via Mughal Road (Shopian) for LMVs only. Stay clear of Chenab gorge slopes.",
+    severity: "critical",
+    district: "Ramban",
+    source: "J&K State Disaster Management Authority (DDMA)",
+    issuedAt: new Date(Date.now() - 35 * 60 * 1000).toISOString(),
+    affectedRoad: "NH-44 Panthyal Corridor",
+    telegramBroadcastStatus: {
+      channel: "@AAPDA_JK_Disaster_Alerts",
+      subscribersCount: 1420,
+      dispatchedAt: new Date(Date.now() - 34 * 60 * 1000).toISOString(),
+    },
+    isActive: true,
+    isDemo: true,
+  },
+  {
+    id: "ALT-002",
+    title: "WEATHER ADVISORY: Cloudburst Watch for Chenab Basin",
+    message: "Open-Meteo & IMD radar detect high precipitation rate (>45mm/hr) in upper catchment. Moderate flash-flood risk for low-lying settlements near Doda and Khari.",
+    severity: "warning",
+    district: "Doda",
+    source: "IMD / DDMA Emergency Operations Centre",
+    issuedAt: new Date(Date.now() - 110 * 60 * 1000).toISOString(),
+    telegramBroadcastStatus: {
+      channel: "@AAPDA_JK_Disaster_Alerts",
+      subscribersCount: 1420,
+      dispatchedAt: new Date(Date.now() - 109 * 60 * 1000).toISOString(),
+    },
+    isActive: true,
+    isDemo: true,
+  },
+];
+
+export function broadcastAlert(alert: {
+  title: string;
+  message: string;
+  severity: "critical" | "warning" | "advisory";
+  district: string;
+  affectedRoad?: string;
+}): PublicAlert {
+  const newAlert: PublicAlert = {
+    ...alert,
+    id: `ALT-${Date.now().toString(36).toUpperCase()}`,
+    source: "DDMA Incident Commander (Admin Action)",
+    issuedAt: new Date().toISOString(),
+    telegramBroadcastStatus: {
+      channel: "@AAPDA_JK_Disaster_Alerts",
+      subscribersCount: 1420,
+      dispatchedAt: new Date().toISOString(),
+    },
+    isActive: true,
+    isDemo: true,
+  };
+  MOCK_ALERTS.unshift(newAlert);
+  return newAlert;
+}
+
+export function addCitizenReport(report: {
+  title: string;
+  description: string;
+  severity: "critical" | "high" | "medium" | "low";
+  district: string;
+  location: { lat: number; lng: number };
+  reportedBy?: string;
+}): Incident {
+  const newIncident: Incident = {
+    id: `REP-${Date.now().toString(36).toUpperCase()}`,
+    title: report.title,
+    description: report.description,
+    severity: report.severity,
+    status: "reported",
+    district: report.district,
+    location: report.location,
+    reportedAt: new Date().toISOString(),
+    reportedBy: report.reportedBy || "citizen_mobile",
+    updatedAt: new Date().toISOString(),
+    evidence: [],
+    aiScore: {
+      confidence: 0.88,
+      duplicateProbability: 0.04,
+      consistencyScore: 0.94,
+      uncertaintyFlags: ["Citizen field report — pending human officer review"],
+      label: "AI Recommendation (unverified — human review required)",
+    },
+    tags: [report.district.toLowerCase(), "citizen-report", "unverified"],
+    isDemo: true,
+  };
+  MOCK_INCIDENTS.unshift(newIncident);
+  return newIncident;
+}
+
+export function updateRoadStatusMock(roadId: string, status: "open" | "partially_open" | "closed" | "unknown"): RoadSegment | undefined {
+  const road = MOCK_ROADS.find((r) => r.id === roadId);
+  if (road) {
+    road.status = status;
+    road.closureReason = status === "open" ? undefined : `Updated by DDMA Officer: ${status.replace("_", " ")}`;
+  }
+  return road;
+}
+
 export function computeDemoStats(): DemoStats {
   const incidentsByStatus = MOCK_INCIDENTS.reduce(
     (acc, inc) => {

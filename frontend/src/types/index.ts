@@ -152,6 +152,25 @@ export interface Delivery {
 }
 
 // ─── UI State ────────────────────────────────────────────────────────────────
+export interface PublicAlert {
+  id: string;
+  title: string;
+  message: string;
+  severity: "critical" | "warning" | "advisory";
+  district: string;
+  source: string;
+  issuedAt: string;
+  expiresAt?: string;
+  affectedRoad?: string;
+  telegramBroadcastStatus?: {
+    channel: string;
+    subscribersCount: number;
+    dispatchedAt: string;
+  };
+  isActive: boolean;
+  isDemo: true;
+}
+
 export interface DemoStats {
   totalIncidents: number;
   incidentsByStatus: Record<IncidentStatus, number>;
