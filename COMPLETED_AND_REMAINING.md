@@ -31,9 +31,23 @@
   - `FE-11`: Responsive layout tested and verified for desktop, tablet, and mobile
   - `FE-12`: Dark mode palette and design tokens applied throughout
 
+- **Phase 3 Backend Core & API Architecture (Dev B):**
+  - `BE-01`: Comprehensive REST API Contract documented in `docs/API_CONTRACT.md`
+  - `BE-02`: FastAPI + Uvicorn modular service booting, CORS configured for `localhost:3000`, `/health` & `/api/v1/health` returning live status
+  - `BE-03`: SQLite database connection (`connection.py`) and SQLAlchemy ORM models (`app/models/`) with full relationship constraints and timestamps: User, Incident, IncidentReport, RoadSegment, Settlement, CriticalFacility, ReliefRequest, InventoryItem, ReliefAllocation, Delivery, AuditLog
+  - `BE-04`: Incidents API endpoints (`GET /api/v1/incidents`, `POST /api/v1/incidents`, `GET /api/v1/incidents/{id}`, `PATCH /api/v1/incidents/{id}/status` with human verification audit logging, `POST/GET /api/v1/incidents/{id}/reports`)
+  - `BE-05`: MargRakshak Roads & Routing endpoints (`GET /api/v1/roads`, `POST /api/v1/roads/closures` with cascade isolation flag, `GET /api/v1/routes/alternatives` with NetworkX graph, `GET /api/v1/settlements`)
+  - `BE-06`: RahatGrid Relief & Inventory endpoints (`GET/POST /api/v1/relief/requests`, `GET /api/v1/relief/inventory`, `POST /api/v1/relief/allocations` with mandatory human authorization barrier, `GET /api/v1/relief/deliveries`, `PATCH /api/v1/relief/deliveries/{id}/status`)
+  - `BE-07`: Public Citizen Incident Report endpoint (`POST /api/v1/public/report`) with zero-PII leakage and status `queued_for_review`
+  - `BE-08`: AAPDA Lens Verification & Deduplication service (`POST /api/v1/verification/analyze/{id}`, `GET /api/v1/verification/{id}`) using Haversine distance, temporal windowing, and uncertainty scoring
+  - `BE-09`: Database Seeding (`seed.py`) with realistic Jammu & Kashmir disaster scenario (Ramban, Shopian, Doda, NH-44, Mughal Road) clearly labelled `is_simulated = True`
+
 - **Verification Results:**
-  - `npm run lint` — Passed with **0 errors, 0 warnings**
-  - `npm run build` — Passed with **0 errors**, all 11 static routes generated
+  - `npm run lint` (frontend) — Passed with **0 errors, 0 warnings**
+  - `npm run build` (frontend) — Passed with **0 errors**, all 11 static routes generated
+  - `python -m pytest` (backend) — Passed with **22/22 tests passing** (health, incidents, roads, routes, settlements, relief, allocations, deliveries, verification)
+  - `Uvicorn` server running live on `http://localhost:8000` (docs at `http://localhost:8000/docs`)
+  - `Next.js` server running live on `http://localhost:3000`
 
 ---
 
@@ -45,18 +59,17 @@
 
 ## 🔄 In Progress
 
-- Backend services initialization (`backend/`) — Dev B
-- AI/Data inference stubs (`ai/`) — Dev C
+- AI/Data inference model integration (`ai/`) — Dev C
 - Docker compose environment & CI workflow (`.github/workflows`) — Dev D
+- Live Frontend ↔ Backend integration testing — Dev A & Dev B
 
 ---
 
 ## 📋 Remaining (Backend / AI / DevOps)
 
-- Real REST API endpoints (`BE-04` through `BE-07`)
-- ML model seed scripts and heuristics (`AI-02` through `AI-06`)
+- ML model production fine-tuning & heuristics (`AI-02` through `AI-06`)
 - Docker compose multi-container orchestration (`DO-02`)
-- End-to-end integration test with live database (`DO-04`)
+- End-to-end integration demo script (`DO-07`)
 
 ---
 
@@ -66,4 +79,4 @@
 
 ---
 
-*Last updated: Hackathon Day — AAPDA Grid Team (Dev A Frontend Lead)*
+*Last updated: Hackathon Day — AAPDA Grid Team (Dev B Backend Lead & Dev A Frontend Lead)*
