@@ -1,4 +1,4 @@
-﻿# Integration Guide — AAPDA Grid
+# Integration Guide — AAPDA Grid
 
 > This guide explains how to set up the development environment, connect the frontend to the API, and run the full demo for the AAPDA Grid hackathon project.
 
