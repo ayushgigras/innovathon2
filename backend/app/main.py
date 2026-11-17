@@ -50,8 +50,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Mount API v1
+# Mount API v1 and compatibility alias
 app.include_router(api_router, prefix=settings.API_V1_STR)
+app.include_router(api_router, prefix="/api")
 
 
 @app.get("/", tags=["Root"])

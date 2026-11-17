@@ -150,6 +150,46 @@ The app starts at **http://localhost:3000**.
 
 ---
 
+## 4B. Backend Setup & Local Server Execution (FastAPI)
+
+The AAPDA Grid backend is a modular **Python 3.11+ / FastAPI** service with an embedded SQLite database (`aapda_grid.db`), SQLAlchemy ORM, NetworkX routing, and automated demo database seeding.
+
+### Installation & Startup
+
+```bash
+# Navigate to backend directory
+cd backend
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Run tests with pytest
+python -m pytest
+
+# Start development server on port 8000
+python main.py
+# or: python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+The backend boots at **http://localhost:8000**.
+
+### Backend URLs & Endpoints
+
+| Resource | Path | Description |
+|---|---|---|
+| Interactive OpenAPI Docs | `/docs` | Swagger UI testbed |
+| ReDoc Specification | `/redoc` | Full endpoint specifications |
+| Health Check | `/api/v1/health` and `/health` | Live database status & timestamp |
+| Incidents Engine | `/api/v1/incidents` | Incident reports, details, and review queue |
+| Road Sentinels | `/api/v1/roads` & `/api/v1/roads/closures` | Highway tracking and closures |
+| Mountain Routes | `/api/v1/routes/alternatives` | NetworkX alternative route pathfinding |
+| Relief Operations | `/api/v1/relief/requests` | Last-mile aid coordination |
+| Public Citizen Portal | `/api/v1/public/report` | Zero-PII citizen damage submission |
+
+> **Automated Seeding:** On startup, the server automatically checks `aapda_grid.db` and populates realistic synthetic Jammu & Kashmir disaster scenario records (Ramban, Shopian, Doda, NH-44, Mughal Road) if empty. All records carry `is_simulated = True`.
+
+---
+
 ## 5. Mock API Adapter
 
 When the backend is unavailable (e.g. during frontend-only development or demos), the mock adapter intercepts all API calls and returns realistic simulated data.
