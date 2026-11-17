@@ -1,10 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Toaster } from "@/components/ui/toaster";
 
-function makeQueryClient() {
+function makeQueryClient(): QueryClient {
   return new QueryClient({
     defaultOptions: {
       queries: {
@@ -17,7 +16,7 @@ function makeQueryClient() {
 
 let browserQueryClient: QueryClient | undefined = undefined;
 
-function getQueryClient() {
+function getQueryClient(): QueryClient {
   if (typeof window === "undefined") {
     return makeQueryClient();
   }
@@ -27,13 +26,12 @@ function getQueryClient() {
   return browserQueryClient;
 }
 
-export function Providers({ children }: { children: React.ReactNode }) {
+export function Providers({ children }: { children: React.ReactNode }): React.ReactElement {
   const queryClient = getQueryClient();
 
   return (
     <QueryClientProvider client={queryClient}>
       {children}
-      <Toaster />
     </QueryClientProvider>
   );
 }

@@ -1,17 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
-  cacheComponents: true,
-  partialPrefetching: true,
-  turbopack: {
-    rules: {
-      "*.css": {
-        loaders: ["@tailwindcss/turbopack"],
-        as: "*.css",
-      },
-    },
-  },
+  /* Turbopack is used only in dev (next dev --turbopack).
+     Production build uses the standard webpack pipeline which
+     handles leaflet/dist/leaflet.css without panicking. */
 };
 
 export default nextConfig;
