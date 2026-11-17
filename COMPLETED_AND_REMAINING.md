@@ -107,4 +107,11 @@
 
 ---
 
+  - `ADM-01`: Public Report Tracking page (`src/app/track/page.tsx`) enabling citizens to track report lifecycle (Submitted -> Received -> Under Review -> Verified -> Resolved) via Report ID
+  - `ADM-02`: Emergency Helpline 112 Phone Call Audio Transcript Ingestion service (`backend/app/services/call_intake_service.py`) with NLP extraction of hazard category, coordinates, urgency indicators, and missing information
+  - `ADM-03`: Secure Telegram Bot Integration (`backend/app/services/telegram_service.py`) dispatching formatted alerts to `@AAPDA_JK_Disaster_Alerts` with graceful offline fallback
+  - `ADM-04`: Dedicated Admin Control Room suite across 10 specialized routes (`/admin/dashboard`, `/admin/incidents`, `/admin/communications`, `/admin/roads`, `/admin/weather`, `/admin/satellite`, `/admin/relief`, `/admin/dispatch`, `/admin/intelligence`, `/admin/audit-logs`)
+  - `ADM-05`: Public Communication Centre implementing strict administrator publication rule across 7 official notification categories (Emergency Alert, Incident Update, Road Closure, Safety Advisory, Relief Update, Estimated Resolution, Reopening Notice) with revision history and audit stamps
+  - `ADM-06`: 76/76 unit and integration tests passing in `backend/tests`
+
 *Last updated: Hackathon Day — AAPDA Grid Team (Dev B Backend Lead & Dev A Frontend Lead)*
