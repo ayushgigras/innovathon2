@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   Eye,
@@ -17,7 +17,11 @@ import {
   FileText,
   Upload,
   ArrowRight,
+  Users,
 } from "lucide-react";
+import { getFieldOfficerForDistrict } from "@/lib/api/field-officers";
+import { getAlternateRouteForDistrict } from "@/lib/api/alternate-routes";
+import { FieldOfficerCallModal } from "@/components/shared/FieldOfficerCallModal";
 import {
   MOCK_INCIDENTS,
   addCitizenReport,
@@ -29,6 +33,33 @@ import type { Incident } from "@/types";
 export default function AdminIncidentsPage(): React.ReactElement {
   const [incidents, setIncidents] = useState<Incident[]>(MOCK_INCIDENTS);
   const [selectedIncident, setSelectedIncident] = useState<Incident>(MOCK_INCIDENTS[0]);
+
+  // Live Sync with citizen submissions across tabs
+  useEffect(() => {
+    const syncFromStorage = () => {
+      try {
+        const stored = localStorage.getItem("aapda_grid_incidents");
+        if (stored) {
+          const parsed = JSON.parse(stored) as Incident[];
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setIncidents(parsed);
+            // keep selected incident fresh
+            const found = parsed.find((i) => i.id === selectedIncident?.id);
+            if (found) setSelectedIncident(found);
+          }
+        }
+      } catch (err) {
+        console.warn("Storage sync error:", err);
+      }
+    };
+    syncFromStorage();
+    window.addEventListener("aapda_incidents_updated", syncFromStorage);
+    window.addEventListener("storage", syncFromStorage);
+    return () => {
+      window.removeEventListener("aapda_incidents_updated", syncFromStorage);
+      window.removeEventListener("storage", syncFromStorage);
+    };
+  }, [selectedIncident?.id]);
 
   // Filters
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -44,6 +75,19 @@ export default function AdminIncidentsPage(): React.ReactElement {
   const [assignedOfficer, setAssignedOfficer] = useState("Officer S. Manhas (Patrolling Unit 4)");
   const [fieldNote, setFieldNote] = useState("Visual confirmation of 45-meter debris field blocking both lanes at Panthyal.");
   const [fieldGps, setFieldGps] = useState("33.2452° N, 75.2591° E");
+  const [isCallModalOpen, setIsCallModalOpen] = useState(false);
+
+  // Automatically update field officer details when selected incident or district changes
+  useEffect(() => {
+    if (selectedIncident) {
+      const officer = getFieldOfficerForDistrict(selectedIncident.district);
+      setAssignedOfficer(`${officer.officerName} (${officer.unit})`);
+      setFieldGps(`${selectedIncident.location.lat.toFixed(4)}° N, ${selectedIncident.location.lng.toFixed(4)}° E`);
+      setFieldNote(
+        `Visual confirmation dispatched to ${officer.officerName} (${officer.rank}) in ${selectedIncident.district} sector. Unit stationed at ${officer.locationBase} (${officer.distanceKm} km away).`
+      );
+    }
+  }, [selectedIncident?.id, selectedIncident?.district]);
 
   // Feedback Notification
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -111,21 +155,50 @@ export default function AdminIncidentsPage(): React.ReactElement {
     setIncidents(updated);
     setSelectedIncident({ ...selectedIncident, status: newStatus, updatedAt: new Date().toISOString() });
 
+    // Sync to localStorage and dispatch event for cross-tab reactivity
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem("aapda_grid_incidents", JSON.stringify(updated));
+        window.dispatchEvent(new CustomEvent("aapda_incidents_updated", { detail: updated }));
+        window.dispatchEvent(new CustomEvent("storage"));
+      } catch (err) {
+        console.warn("Storage incident sync:", err);
+      }
+    }
+
+    const dist = selectedIncident.district || "Ramban";
+    const targetRoadId =
+      dist === "Udhampur"
+        ? "RD-OPEN-001"
+        : dist === "Doda" || dist === "Kishtwar"
+        ? "RD-004"
+        : dist === "Shopian"
+        ? "RD-002"
+        : "RD-001";
+
     if (newStatus === "verified") {
-      updateRoadStatusMock("RD-001", "closed");
+      updateRoadStatusMock(targetRoadId, "closed");
+      const advisory = getAlternateRouteForDistrict(dist);
+
       broadcastAlert({
-        title: `CONFIRMED: ${selectedIncident.title}`,
-        message: `Verified by field officer. NH-44 closed at Panthyal. Alternate via Mughal Road open for light vehicles.`,
+        title: `CRITICAL: ${selectedIncident.title} — Road Closed`,
+        message: `DDMA Incident Commander confirmed road closure in ${dist} sector. Diversion active: ${advisory.alternateRoute.name} (${advisory.alternateRoute.passableFor}).`,
         severity: "critical",
-        district: selectedIncident.district,
-        affectedRoad: "NH-44 Panthyal Corridor",
+        district: dist,
+        affectedRoad: advisory.affectedRoad,
+        closureReason: advisory.closureReason,
+        alternateRoute: advisory.alternateRoute,
       });
-      setToastMessage(`Incident ${selectedIncident.id} officially confirmed by Commander. NH-44 closed & alert broadcasted.`);
+
+      setToastMessage(`✅ Incident ${selectedIncident.id} CONFIRMED! ${advisory.affectedRoad} CLOSED & Emergency Alert broadcasted to ${dist} citizens!`);
+    } else if (newStatus === "closed") {
+      updateRoadStatusMock(targetRoadId, "open");
+      setToastMessage(`Incident ${selectedIncident.id} marked RESOLVED! Road corridor reopened.`);
     } else {
       setToastMessage(`Incident ${selectedIncident.id} transitioned to ${newStatus.toUpperCase()}.`);
     }
 
-    setTimeout(() => setToastMessage(null), 4000);
+    setTimeout(() => setToastMessage(null), 6000);
   };
 
   const filtered = incidents.filter((i) => {
@@ -297,6 +370,15 @@ export default function AdminIncidentsPage(): React.ReactElement {
                       >
                         {inc.severity}
                       </span>
+                      <span
+                        className={`text-[9px] font-bold px-1.5 py-0.2 rounded ${
+                          (inc.reportCount ?? 1) > 1
+                            ? "bg-purple-500/20 text-purple-300 border border-purple-500/30"
+                            : "bg-stone-800 text-stone-400"
+                        }`}
+                      >
+                        {(inc.reportCount ?? 1)}x
+                      </span>
                       {isCall && (
                         <span className="text-[9px] bg-blue-500/20 text-blue-400 px-1.5 py-0.2 rounded font-bold flex items-center gap-0.5">
                           <PhoneCall className="w-2.5 h-2.5" /> CALL
@@ -320,8 +402,10 @@ export default function AdminIncidentsPage(): React.ReactElement {
                   <p className="text-[11px] text-stone-400 line-clamp-1">{inc.description}</p>
 
                   <div className="flex items-center justify-between text-[10px] text-stone-500 mt-2 pt-1 border-t border-stone-800">
-                    <span>{inc.district} Sector</span>
-                    <span>{new Date(inc.reportedAt).toLocaleTimeString()}</span>
+                    <span className="text-stone-400">📍 {inc.district} Sector</span>
+                    <span className="text-emerald-400 font-medium flex items-center gap-1">
+                      👮 {getFieldOfficerForDistrict(inc.district).officerName}
+                    </span>
                   </div>
                 </div>
               );
@@ -344,6 +428,41 @@ export default function AdminIncidentsPage(): React.ReactElement {
               </div>
               <h2 className="text-base font-bold text-stone-100 mt-1">{selectedIncident.title}</h2>
               <p className="text-xs text-stone-300 mt-0.5">{selectedIncident.description}</p>
+
+              {/* Consolidated Multi-Citizen Reports Group */}
+              {(selectedIncident.reportCount ?? 1) > 1 && (
+                <div className="bg-purple-950/40 border border-purple-500/30 rounded-xl p-3 text-xs text-purple-200 space-y-2 mt-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 font-bold text-purple-300">
+                      <Users className="w-3.5 h-3.5 text-purple-400" />
+                      <span>Consolidated Reports ({selectedIncident.reportCount} citizen submissions)</span>
+                    </div>
+                    <span className="text-[10px] text-purple-300 bg-purple-900/50 px-2 py-0.5 rounded font-mono font-bold">
+                      Multi-Citizen Corroboration
+                    </span>
+                  </div>
+                  {selectedIncident.subReports && selectedIncident.subReports.length > 0 && (
+                    <div className="space-y-1 pt-1 border-t border-purple-500/20 text-[11px]">
+                      {selectedIncident.subReports.map((sub, idx) => (
+                        <div key={sub.id || idx} className="flex flex-wrap items-center gap-2 bg-stone-900/70 p-1.5 rounded-lg border border-stone-800">
+                          <span className="font-mono text-purple-400 font-bold">#{idx + 1}</span>
+                          <span className="text-stone-400">[{new Date(sub.reportedAt).toLocaleTimeString()}]</span>
+                          <span className="text-stone-300 font-semibold">{sub.reporterName}:</span>
+                          <span className="italic text-stone-400 truncate max-w-sm">&quot;{sub.description}&quot;</span>
+                          {sub.mediaUrl && sub.mediaUrl.startsWith("data:image") && (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={sub.mediaUrl}
+                              alt="Evidence"
+                              className="w-7 h-7 object-cover rounded border border-emerald-500/40 ml-auto"
+                            />
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="text-right">
@@ -397,10 +516,40 @@ export default function AdminIncidentsPage(): React.ReactElement {
 
           {/* Section 2: Field Officer Verification Workflow (Part 6) */}
           <div className="bg-stone-950/80 border border-stone-800 rounded-xl p-3.5 space-y-3">
-            <h4 className="text-xs font-bold text-stone-200 flex items-center gap-1.5">
-              <UserCheck className="w-3.5 h-3.5 text-blue-400" />
-              Field Officer Physical Verification Workflow
-            </h4>
+            <div className="flex items-center justify-between">
+              <h4 className="text-xs font-bold text-stone-200 flex items-center gap-1.5">
+                <UserCheck className="w-3.5 h-3.5 text-blue-400" />
+                Field Officer Physical Verification Workflow ({selectedIncident.district} Sector)
+              </h4>
+              <button
+                type="button"
+                onClick={() => setIsCallModalOpen(true)}
+                className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow transition-all hover:scale-[1.02]"
+              >
+                <PhoneCall className="w-3 h-3" />
+                Call Officer ({selectedIncident.district})
+              </button>
+            </div>
+
+            {/* Tactical Radio Status Strip */}
+            {(() => {
+              const officer = getFieldOfficerForDistrict(selectedIncident.district);
+              return (
+                <div className="flex flex-wrap items-center justify-between gap-2 p-2 bg-stone-900 border border-stone-800 rounded-lg text-[11px]">
+                  <div className="flex items-center gap-2">
+                    <Radio className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
+                    <span className="text-stone-300">
+                      Channel: <strong className="text-stone-100 font-mono">{officer.radioFrequency}</strong>
+                    </span>
+                    <span className="text-stone-500">|</span>
+                    <span className="text-stone-400">{officer.locationBase}</span>
+                  </div>
+                  <span className="text-emerald-400 font-semibold">
+                    Proximity: {officer.distanceKm} km from incident
+                  </span>
+                </div>
+              );
+            })()}
 
             <div className="grid grid-cols-2 gap-2 text-xs">
               <div>
@@ -478,6 +627,21 @@ export default function AdminIncidentsPage(): React.ReactElement {
           </div>
         </div>
       </div>
+
+      {/* Field Officer Call Simulation Modal */}
+      {selectedIncident && (
+        <FieldOfficerCallModal
+          isOpen={isCallModalOpen}
+          onClose={() => setIsCallModalOpen(false)}
+          officer={getFieldOfficerForDistrict(selectedIncident.district)}
+          incident={selectedIncident}
+          onCallLogged={(note, actionType) => {
+            setFieldNote((prev) => `${prev}\n[Direct Call - ${actionType.toUpperCase()}]: ${note}`);
+            setToastMessage(`Tactical order logged with ${getFieldOfficerForDistrict(selectedIncident.district).officerName}!`);
+            setTimeout(() => setToastMessage(null), 4000);
+          }}
+        />
+      )}
     </div>
   );
 }

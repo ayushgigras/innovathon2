@@ -1,0 +1,23 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Incident reports: Public citizen write, read by anyone
+    match /incident_reports/{reportId} {
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if request.auth != null;
+    }
+
+    // Emergency alerts: Public read, authorized write
+    match /emergency_alerts/{alertId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // Default match
+    match /{document=**} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+  }
+}

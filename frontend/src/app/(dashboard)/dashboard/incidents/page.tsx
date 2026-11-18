@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -8,11 +8,14 @@ import {
   Search,
   Filter,
   Eye,
+  PhoneCall,
 } from "lucide-react";
 import { DemoBadge } from "@/components/shared/DemoBadge";
 import { SeverityBadge } from "@/components/shared/SeverityBadge";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { HumanConfirmModal } from "@/components/shared/HumanConfirmModal";
+import { FieldOfficerCallModal } from "@/components/shared/FieldOfficerCallModal";
+import { getFieldOfficerForDistrict } from "@/lib/api/field-officers";
 import {
   MOCK_INCIDENTS,
 } from "@/lib/api/mock-adapter";
@@ -25,11 +28,34 @@ export default function IncidentsPage(): React.ReactElement {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<IncidentStatus | "all">("all");
   const [incidents, setIncidents] = useState<Incident[]>(MOCK_INCIDENTS);
+
+  // Sync with live citizen submissions
+  useEffect(() => {
+    const handleSync = () => {
+      try {
+        const stored = localStorage.getItem("aapda_grid_incidents");
+        if (stored) {
+          const parsed = JSON.parse(stored) as Incident[];
+          if (Array.isArray(parsed) && parsed.length > 0) setIncidents(parsed);
+        }
+      } catch (e) {
+        console.warn(e);
+      }
+    };
+    handleSync();
+    window.addEventListener("aapda_incidents_updated", handleSync);
+    window.addEventListener("storage", handleSync);
+    return () => {
+      window.removeEventListener("aapda_incidents_updated", handleSync);
+      window.removeEventListener("storage", handleSync);
+    };
+  }, []);
   const [modal, setModal] = useState<{
     open: boolean;
     action: "approve" | "reject";
     incident: Incident | null;
   }>({ open: false, action: "approve", incident: null });
+  const [callModalIncident, setCallModalIncident] = useState<Incident | null>(null);
 
   const reviewQueue = incidents.filter(
     (i) => i.status === "reported" || i.status === "under_review"
@@ -181,6 +207,7 @@ export default function IncidentsPage(): React.ReactElement {
                     showActions={tab === "review_queue"}
                     onApprove={() => handleAction(incident, "approve")}
                     onReject={() => handleAction(incident, "reject")}
+                    onCallOfficer={() => setCallModalIncident(incident)}
                     confidenceLabel={confidenceLabel}
                     confidenceColor={confidenceColor}
                   />
@@ -214,6 +241,19 @@ export default function IncidentsPage(): React.ReactElement {
         confirmLabel={modal.action === "approve" ? "Confirm Verification" : "Confirm Rejection"}
         variant={modal.action === "approve" ? "approve" : "reject"}
       />
+
+      {/* Area Field Officer Call Modal */}
+      {callModalIncident && (
+        <FieldOfficerCallModal
+          isOpen={!!callModalIncident}
+          onClose={() => setCallModalIncident(null)}
+          officer={getFieldOfficerForDistrict(callModalIncident.district)}
+          incident={callModalIncident}
+          onCallLogged={(note, actionType) => {
+            console.log("Logged call to field officer:", note, actionType);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -225,6 +265,7 @@ interface IncidentRowProps {
   showActions: boolean;
   onApprove: () => void;
   onReject: () => void;
+  onCallOfficer: () => void;
   confidenceLabel: (n: number) => string;
   confidenceColor: (n: number) => string;
 }
@@ -234,26 +275,40 @@ function IncidentRow({
   showActions,
   onApprove,
   onReject,
+  onCallOfficer,
   confidenceLabel,
   confidenceColor,
 }: IncidentRowProps): React.ReactElement {
   const score = incident.aiScore;
   const dupHigh = score && score.duplicateProbability > 0.2;
+  const officer = getFieldOfficerForDistrict(incident.district);
 
   return (
     <tr className={`hover:bg-slate-800/50 transition-colors ${dupHigh ? "border-l-2 border-orange-500" : ""}`}>
       <td className="px-4 py-3 text-slate-400 font-mono text-xs">{incident.id}</td>
       <td className="px-4 py-3">
-        <div className="max-w-xs">
-          <p className="text-slate-200 font-medium text-sm leading-tight truncate">{incident.title}</p>
+        <div className="max-w-xs space-y-0.5">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <p className="text-slate-200 font-medium text-sm leading-tight truncate">{incident.title}</p>
+            {(incident.reportCount ?? 1) > 1 && (
+              <span className="px-1.5 py-0.5 bg-purple-500/20 text-purple-300 border border-purple-500/40 rounded text-[10px] font-bold whitespace-nowrap">
+                Reported {incident.reportCount} times
+              </span>
+            )}
+          </div>
           {dupHigh && (
-            <span className="inline-flex items-center gap-1 text-[10px] text-orange-400 font-medium mt-0.5">
-              <AlertTriangle className="w-2.5 h-2.5" /> Possible duplicate flagged
+            <span className="inline-flex items-center gap-1 text-[10px] text-orange-400 font-medium">
+              <AlertTriangle className="w-2.5 h-2.5" /> Corroborated multi-source report
             </span>
           )}
         </div>
       </td>
-      <td className="px-4 py-3 text-slate-300 text-sm">{incident.district}</td>
+      <td className="px-4 py-3 text-slate-300 text-sm">
+        <div className="font-medium text-slate-200">{incident.district}</div>
+        <div className="text-[10px] text-emerald-400/90 font-mono flex items-center gap-1 mt-0.5">
+          <span>👮 {officer.officerName}</span>
+        </div>
+      </td>
       <td className="px-4 py-3">
         <SeverityBadge severity={incident.severity} />
       </td>
@@ -289,7 +344,15 @@ function IncidentRow({
       {showActions && (
         <td className="px-4 py-3">
           {(incident.status === "reported" || incident.status === "under_review") ? (
-            <div className="flex gap-2">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <button
+                type="button"
+                onClick={onCallOfficer}
+                title={`Call Area Field Officer ${officer.officerName} (${officer.district})`}
+                className="flex items-center gap-1 px-2.5 py-1.5 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 text-blue-300 rounded-lg text-xs font-medium transition-colors"
+              >
+                <PhoneCall className="w-3.5 h-3.5 text-blue-400" /> Call Officer
+              </button>
               <button
                 type="button"
                 onClick={onApprove}

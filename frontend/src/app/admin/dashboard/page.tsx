@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import {
@@ -20,7 +20,13 @@ import {
   ArrowRight,
   RefreshCw,
   FileCheck,
+  Users,
+  PhoneCall,
 } from "lucide-react";
+import { getFieldOfficerForDistrict } from "@/lib/api/field-officers";
+import { getAlternateRouteForDistrict } from "@/lib/api/alternate-routes";
+import { FieldOfficerCallModal } from "@/components/shared/FieldOfficerCallModal";
+import { RahatGridReliefConsole } from "@/components/relief/RahatGridReliefConsole";
 
 const WeatherExplorer = dynamic(
   () => import("@/components/weather/WeatherExplorer").then((mod) => mod.WeatherExplorer),
@@ -53,6 +59,30 @@ export default function AdminDashboardPage(): React.ReactElement {
   const [roads, setRoads] = useState<RoadSegment[]>(MOCK_ROADS);
   const [alerts, setAlerts] = useState<PublicAlert[]>(MOCK_ALERTS);
 
+  // Live Sync with citizen submissions across tabs and pages
+  useEffect(() => {
+    const syncFromStorage = () => {
+      try {
+        const stored = localStorage.getItem("aapda_grid_incidents");
+        if (stored) {
+          const parsed = JSON.parse(stored) as Incident[];
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setIncidents(parsed);
+          }
+        }
+      } catch (err) {
+        console.warn("Incident storage sync:", err);
+      }
+    };
+    syncFromStorage();
+    window.addEventListener("aapda_incidents_updated", syncFromStorage);
+    window.addEventListener("storage", syncFromStorage);
+    return () => {
+      window.removeEventListener("aapda_incidents_updated", syncFromStorage);
+      window.removeEventListener("storage", syncFromStorage);
+    };
+  }, []);
+
   // Alert Form State
   const [alertTitle, setAlertTitle] = useState("");
   const [alertDistrict, setAlertDistrict] = useState("Ramban");
@@ -64,6 +94,17 @@ export default function AdminDashboardPage(): React.ReactElement {
   // Action feedback
   const [actionFeedback, setActionFeedback] = useState<string | null>(null);
 
+  // Field Officer Call Modal State
+  const [activeCallIncident, setActiveCallIncident] = useState<Incident | null>(null);
+  const [isCallModalOpen, setIsCallModalOpen] = useState(false);
+
+  const handleCallLogged = (note: string, _actionType: string) => {
+    if (!activeCallIncident) return;
+    const officer = getFieldOfficerForDistrict(activeCallIncident.district);
+    setActionFeedback(`📞 Dispatch log recorded with ${officer.officerName} (${officer.district}): ${note}`);
+    setTimeout(() => setActionFeedback(null), 8000);
+  };
+
   // Handler: Confirm Incident and Block Road
   const handleConfirmIncidentAndBlock = (inc: Incident) => {
     // 1. Update incident status
@@ -72,25 +113,45 @@ export default function AdminDashboardPage(): React.ReactElement {
     );
     setIncidents(updated);
 
-    // 2. Block the road segment
-    const nh44 = roads.find((r) => r.id === "RD-001");
-    if (nh44) {
-      updateRoadStatusMock("RD-001", "closed");
-      setRoads([...roads]);
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem("aapda_grid_incidents", JSON.stringify(updated));
+        window.dispatchEvent(new CustomEvent("aapda_incidents_updated", { detail: updated }));
+        window.dispatchEvent(new CustomEvent("storage"));
+      } catch (e) {
+        console.warn("Storage sync:", e);
+      }
     }
 
-    // 3. Issue alert
+    const dist = inc.district || "Ramban";
+    const targetRoadId =
+      dist === "Udhampur"
+        ? "RD-OPEN-001"
+        : dist === "Doda" || dist === "Kishtwar"
+        ? "RD-004"
+        : dist === "Shopian"
+        ? "RD-002"
+        : "RD-001";
+
+    // 2. Block the road segment
+    updateRoadStatusMock(targetRoadId, "closed");
+    setRoads([...roads]);
+
+    // 3. Issue alert with alternate diversion route
+    const advisory = getAlternateRouteForDistrict(dist);
     broadcastAlert({
-      title: `CONFIRMED CLOSURE: ${inc.title}`,
-      message: `DDMA EOC verified: ${inc.description}. Road closed to all traffic until clearance.`,
+      title: `CRITICAL: ${inc.title} — Road Closed`,
+      message: `DDMA EOC verified: ${inc.description}. Diversion active: ${advisory.alternateRoute.name} (${advisory.alternateRoute.passableFor}).`,
       severity: "critical",
-      district: inc.district,
-      affectedRoad: "NH-44 Panthyal Corridor",
+      district: dist,
+      affectedRoad: advisory.affectedRoad,
+      closureReason: advisory.closureReason,
+      alternateRoute: advisory.alternateRoute,
     });
     setAlerts([...MOCK_ALERTS]);
 
-    setActionFeedback(`Incident ${inc.id} officially confirmed by Commander. NH-44 marked CLOSED & Telegram Alert dispatched.`);
-    setTimeout(() => setActionFeedback(null), 4000);
+    setActionFeedback(`✅ Incident ${inc.id} confirmed! ${advisory.affectedRoad} CLOSED & Emergency Alert dispatched to ${dist}!`);
+    setTimeout(() => setActionFeedback(null), 6000);
   };
 
   // Handler: Reject / Mark Duplicate
@@ -210,11 +271,10 @@ export default function AdminDashboardPage(): React.ReactElement {
         <button
           type="button"
           onClick={() => setActiveTab("queue")}
-          className={`flex items-center gap-1.5 px-4 py-2 rounded-xl transition-all ${
-            activeTab === "queue"
-              ? "bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm"
-              : "text-stone-400 hover:text-stone-200 hover:bg-stone-900"
-          }`}
+          className={`flex items-center gap-1.5 px-4 py-2 rounded-xl transition-all ${activeTab === "queue"
+            ? "bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm"
+            : "text-stone-400 hover:text-stone-200 hover:bg-stone-900"
+            }`}
         >
           <Eye className="w-4 h-4" />
           Incoming Reports &amp; Verification ({pendingIncidents.length})
@@ -223,11 +283,10 @@ export default function AdminDashboardPage(): React.ReactElement {
         <button
           type="button"
           onClick={() => setActiveTab("alerts")}
-          className={`flex items-center gap-1.5 px-4 py-2 rounded-xl transition-all ${
-            activeTab === "alerts"
-              ? "bg-red-500/20 text-red-300 border border-red-500/40 shadow-sm"
-              : "text-stone-400 hover:text-stone-200 hover:bg-stone-900"
-          }`}
+          className={`flex items-center gap-1.5 px-4 py-2 rounded-xl transition-all ${activeTab === "alerts"
+            ? "bg-red-500/20 text-red-300 border border-red-500/40 shadow-sm"
+            : "text-stone-400 hover:text-stone-200 hover:bg-stone-900"
+            }`}
         >
           <Radio className="w-4 h-4" />
           Emergency Alert Broadcaster ({alerts.length})
@@ -236,11 +295,10 @@ export default function AdminDashboardPage(): React.ReactElement {
         <button
           type="button"
           onClick={() => setActiveTab("roads")}
-          className={`flex items-center gap-1.5 px-4 py-2 rounded-xl transition-all ${
-            activeTab === "roads"
-              ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm"
-              : "text-stone-400 hover:text-stone-200 hover:bg-stone-900"
-          }`}
+          className={`flex items-center gap-1.5 px-4 py-2 rounded-xl transition-all ${activeTab === "roads"
+            ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm"
+            : "text-stone-400 hover:text-stone-200 hover:bg-stone-900"
+            }`}
         >
           <MapPin className="w-4 h-4" />
           MargRakshak Mountain Corridors
@@ -249,11 +307,10 @@ export default function AdminDashboardPage(): React.ReactElement {
         <button
           type="button"
           onClick={() => setActiveTab("relief")}
-          className={`flex items-center gap-1.5 px-4 py-2 rounded-xl transition-all ${
-            activeTab === "relief"
-              ? "bg-blue-500/20 text-blue-300 border border-blue-500/40 shadow-sm"
-              : "text-stone-400 hover:text-stone-200 hover:bg-stone-900"
-          }`}
+          className={`flex items-center gap-1.5 px-4 py-2 rounded-xl transition-all ${activeTab === "relief"
+            ? "bg-blue-500/20 text-blue-300 border border-blue-500/40 shadow-sm"
+            : "text-stone-400 hover:text-stone-200 hover:bg-stone-900"
+            }`}
         >
           <Package className="w-4 h-4" />
           RahatGrid Relief Allocations
@@ -262,14 +319,28 @@ export default function AdminDashboardPage(): React.ReactElement {
         <button
           type="button"
           onClick={() => setActiveTab("monitoring")}
-          className={`flex items-center gap-1.5 px-4 py-2 rounded-xl transition-all ${
-            activeTab === "monitoring"
-              ? "bg-purple-500/20 text-purple-300 border border-purple-500/40 shadow-sm"
-              : "text-stone-400 hover:text-stone-200 hover:bg-stone-900"
-          }`}
+          className={`flex items-center gap-1.5 px-4 py-2 rounded-xl transition-all ${activeTab === "monitoring"
+            ? "bg-purple-500/20 text-purple-300 border border-purple-500/40 shadow-sm"
+            : "text-stone-400 hover:text-stone-200 hover:bg-stone-900"
+            }`}
         >
           <Layers className="w-4 h-4" />
           Weather &amp; Satellite Status
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            if (typeof window !== "undefined") {
+              localStorage.removeItem("aapda_grid_incidents");
+              window.location.reload();
+            }
+          }}
+          className="ml-auto text-[11px] px-3 py-1.5 bg-stone-850 hover:bg-stone-800 text-stone-300 rounded-xl flex items-center gap-1.5 border border-stone-700 transition-colors"
+          title="Clear cached test submissions and reset to clean simulation state"
+        >
+          <RefreshCw className="w-3.5 h-3.5 text-amber-400" />
+          Reset Simulation Data
         </button>
       </div>
 
@@ -300,22 +371,20 @@ export default function AdminDashboardPage(): React.ReactElement {
               return (
                 <div
                   key={inc.id}
-                  className={`bg-stone-900 border rounded-2xl p-4 space-y-3 transition-colors ${
-                    isPending
-                      ? "border-amber-500/40 hover:border-amber-500/70"
-                      : "border-stone-800 opacity-80"
-                  }`}
+                  className={`bg-stone-900 border rounded-2xl p-4 space-y-3 transition-colors ${isPending
+                    ? "border-amber-500/40 hover:border-amber-500/70"
+                    : "border-stone-800 opacity-80"
+                    }`}
                 >
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
                         <span className="font-mono text-[11px] text-stone-400">{inc.id}</span>
                         <span
-                          className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${
-                            inc.severity === "critical"
-                              ? "bg-red-500/20 text-red-400 border border-red-500/30"
-                              : "bg-amber-500/20 text-amber-400 border border-amber-500/30"
-                          }`}
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${inc.severity === "critical"
+                            ? "bg-red-500/20 text-red-400 border border-red-500/30"
+                            : "bg-amber-500/20 text-amber-400 border border-amber-500/30"
+                            }`}
                         >
                           {inc.severity}
                         </span>
@@ -325,20 +394,62 @@ export default function AdminDashboardPage(): React.ReactElement {
                         <span className="text-[10px] text-stone-500">
                           Coords: [{inc.location.lat.toFixed(3)}, {inc.location.lng.toFixed(3)}]
                         </span>
+                        <span
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 ${(inc.reportCount ?? 1) > 1
+                            ? "bg-purple-500/20 text-purple-300 border border-purple-500/40"
+                            : "bg-blue-500/20 text-blue-300 border border-blue-500/40"
+                            }`}
+                        >
+                          📢 Reported {inc.reportCount ?? 1} {(inc.reportCount ?? 1) === 1 ? "time" : "times"}
+                        </span>
                       </div>
                       <h3 className="text-sm font-bold text-stone-100">{inc.title}</h3>
                       <p className="text-xs text-stone-300">{inc.description}</p>
+
+                      {/* Multi-Citizen Deduplicated Reports Grouping */}
+                      {(inc.reportCount ?? 1) > 1 && (
+                        <div className="bg-purple-950/40 border border-purple-500/30 rounded-xl p-3 text-xs text-purple-200 space-y-2 mt-2">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 font-bold text-purple-300">
+                              <Users className="w-4 h-4 text-purple-400" />
+                              <span>Consolidated Incident: Reported {inc.reportCount} times across this sector</span>
+                            </div>
+                            <span className="text-[10px] bg-purple-900/60 text-purple-200 px-2 py-0.5 rounded font-mono font-bold">
+                              Deduplicated into Single Incident
+                            </span>
+                          </div>
+                          {inc.subReports && inc.subReports.length > 0 && (
+                            <div className="space-y-1.5 pt-1.5 border-t border-purple-500/20 text-[11px]">
+                              {inc.subReports.map((sub, idx) => (
+                                <div key={sub.id || idx} className="flex flex-wrap items-center gap-2 bg-stone-900/70 p-1.5 rounded-lg border border-stone-800">
+                                  <span className="font-mono font-bold text-purple-400">#{idx + 1}</span>
+                                  <span className="text-stone-400">[{new Date(sub.reportedAt).toLocaleTimeString()}]</span>
+                                  <span className="text-stone-300 font-semibold">{sub.reporterName}:</span>
+                                  <span className="italic text-stone-400 truncate max-w-sm">&quot;{sub.description}&quot;</span>
+                                  {sub.mediaUrl && sub.mediaUrl.startsWith("data:image") && (
+                                    // eslint-disable-next-line @next/next/no-img-element
+                                    <img
+                                      src={sub.mediaUrl}
+                                      alt="Evidence"
+                                      className="w-7 h-7 object-cover rounded border border-emerald-500/40 ml-auto"
+                                    />
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     <div className="text-right">
                       <span
-                        className={`text-xs font-bold px-2.5 py-1 rounded-lg ${
-                          inc.status === "verified"
-                            ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
-                            : inc.status === "reported"
+                        className={`text-xs font-bold px-2.5 py-1 rounded-lg ${inc.status === "verified"
+                          ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                          : inc.status === "reported"
                             ? "bg-red-500/20 text-red-400 border border-red-500/30 animate-pulse"
                             : "bg-amber-500/20 text-amber-400 border border-amber-500/30"
-                        }`}
+                          }`}
                       >
                         {inc.status === "reported" ? "NEW: CITIZEN REPORTED" : inc.status.toUpperCase()}
                       </span>
@@ -362,6 +473,50 @@ export default function AdminDashboardPage(): React.ReactElement {
                       </div>
                     </div>
                   )}
+
+                  {/* Local Area Field Officer Direct Tactical Link */}
+                  {(() => {
+                    const officer = getFieldOfficerForDistrict(inc.district);
+                    return (
+                      <div className="bg-stone-950/90 border border-stone-800 rounded-xl p-3 flex flex-wrap items-center justify-between gap-3 text-xs">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
+                            <Radio className="w-4 h-4 animate-pulse" />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2 font-bold text-stone-200">
+                              <span>👮 Ground Officer: {officer.officerName}</span>
+                              <span className="text-[10px] bg-stone-800 text-stone-300 px-1.5 py-0.5 rounded font-mono">
+                                {officer.rank}
+                              </span>
+                              <span className="text-[10px] text-emerald-400 border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.5 rounded-full font-bold">
+                                {officer.distanceKm} km away
+                              </span>
+                            </div>
+                            <div className="text-[11px] text-stone-400 flex flex-wrap items-center gap-2 mt-0.5">
+                              <span>📍 {officer.unit}</span>
+                              <span>•</span>
+                              <span className="font-mono text-stone-500">{officer.radioFrequency}</span>
+                              <span>•</span>
+                              <span>HQ: {officer.locationBase}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setActiveCallIncident(inc);
+                            setIsCallModalOpen(true);
+                          }}
+                          className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-emerald-950 transition-all hover:scale-[1.02]"
+                        >
+                          <PhoneCall className="w-3.5 h-3.5" />
+                          Call Field Officer ({officer.district})
+                        </button>
+                      </div>
+                    );
+                  })()}
 
                   {/* Commander Actions */}
                   {isPending && (
@@ -515,21 +670,19 @@ export default function AdminDashboardPage(): React.ReactElement {
               {alerts.map((alt) => (
                 <div
                   key={alt.id}
-                  className={`bg-stone-900 border rounded-2xl p-4 space-y-2 ${
-                    alt.severity === "critical"
-                      ? "border-red-600/50 bg-red-950/20"
-                      : "border-stone-800"
-                  }`}
+                  className={`bg-stone-900 border rounded-2xl p-4 space-y-2 ${alt.severity === "critical"
+                    ? "border-red-600/50 bg-red-950/20"
+                    : "border-stone-800"
+                    }`}
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <span className="font-mono text-[10px] text-stone-400">{alt.id}</span>
                       <span
-                        className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${
-                          alt.severity === "critical"
-                            ? "bg-red-600 text-white"
-                            : "bg-amber-600 text-white"
-                        }`}
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${alt.severity === "critical"
+                          ? "bg-red-600 text-white"
+                          : "bg-amber-600 text-white"
+                          }`}
                       >
                         {alt.severity}
                       </span>
@@ -595,13 +748,12 @@ export default function AdminDashboardPage(): React.ReactElement {
                     <td className="py-3 px-3 text-stone-400">{road.district}</td>
                     <td className="py-3 px-3">
                       <span
-                        className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-                          road.status === "closed"
-                            ? "bg-red-500/20 text-red-400 border border-red-500/30"
-                            : road.status === "partially_open"
+                        className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${road.status === "closed"
+                          ? "bg-red-500/20 text-red-400 border border-red-500/30"
+                          : road.status === "partially_open"
                             ? "bg-orange-500/20 text-orange-400 border border-orange-500/30"
                             : "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
-                        }`}
+                          }`}
                       >
                         {road.status.replace("_", " ")}
                       </span>
@@ -614,27 +766,24 @@ export default function AdminDashboardPage(): React.ReactElement {
                         <button
                           type="button"
                           onClick={() => handleToggleRoad(road.id, "open")}
-                          className={`px-2 py-1 rounded transition-colors ${
-                            road.status === "open" ? "bg-emerald-600 text-white" : "text-stone-400 hover:text-white"
-                          }`}
+                          className={`px-2 py-1 rounded transition-colors ${road.status === "open" ? "bg-emerald-600 text-white" : "text-stone-400 hover:text-white"
+                            }`}
                         >
                           Open
                         </button>
                         <button
                           type="button"
                           onClick={() => handleToggleRoad(road.id, "partially_open")}
-                          className={`px-2 py-1 rounded transition-colors ${
-                            road.status === "partially_open" ? "bg-orange-600 text-white" : "text-stone-400 hover:text-white"
-                          }`}
+                          className={`px-2 py-1 rounded transition-colors ${road.status === "partially_open" ? "bg-orange-600 text-white" : "text-stone-400 hover:text-white"
+                            }`}
                         >
                           Partial
                         </button>
                         <button
                           type="button"
                           onClick={() => handleToggleRoad(road.id, "closed")}
-                          className={`px-2 py-1 rounded transition-colors ${
-                            road.status === "closed" ? "bg-red-600 text-white" : "text-stone-400 hover:text-white"
-                          }`}
+                          className={`px-2 py-1 rounded transition-colors ${road.status === "closed" ? "bg-red-600 text-white" : "text-stone-400 hover:text-white"
+                            }`}
                         >
                           Closed
                         </button>
@@ -648,63 +797,9 @@ export default function AdminDashboardPage(): React.ReactElement {
         </div>
       )}
 
-      {/* ── TAB 4: RAHATGRID RELIEF ALLOCATIONS ───────────────────────────── */}
+      {/* ── TAB 4: RAHATGRID RELIEF ALLOCATIONS & FLEET DISPATCH ───────── */}
       {activeTab === "relief" && (
-        <div className="bg-stone-900 border border-stone-800 rounded-2xl p-5 space-y-4">
-          <div>
-            <h2 className="text-sm font-bold text-stone-100 flex items-center gap-2">
-              <Package className="w-4 h-4 text-blue-400" />
-              RahatGrid Allocation Recommendations (Human-in-the-Loop)
-            </h2>
-            <p className="text-xs text-stone-400">
-              AI proposes optimal stock distribution and tests road connectivity to prevent dispatching via blocked roads.
-            </p>
-          </div>
-
-          <div className="space-y-3">
-            {MOCK_RELIEF_REQUESTS.map((req) => (
-              <div
-                key={req.id}
-                className="bg-stone-950/70 border border-stone-800 rounded-xl p-4 flex flex-wrap items-center justify-between gap-4"
-              >
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-[11px] text-stone-400">{req.id}</span>
-                    <span className="font-bold text-stone-100 text-xs">Destination: {req.settlementName}</span>
-                    <span className="text-[10px] bg-purple-500/20 text-purple-400 px-2 py-0.5 rounded font-bold">
-                      {req.priority.toUpperCase()} PRIORITY
-                    </span>
-                  </div>
-                  <div className="text-xs text-stone-400">
-                    Requested Items:{" "}
-                    <strong>
-                      {req.items.map((i) => `${i.quantityRequested}x ${i.name}`).join(", ")}
-                    </strong>
-                  </div>
-                  {req.aiAllocationSuggestion && (
-                    <p className="text-[11px] text-emerald-400">
-                      ✓ AI Route Check: Recommended from Chanderkote Bypass Depot (Road Passable)
-                    </p>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setActionFeedback(`Relief dispatch for ${req.settlementName} authorized by Commander. Vehicle assigned.`);
-                      setTimeout(() => setActionFeedback(null), 3000);
-                    }}
-                    className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-md"
-                  >
-                    <FileCheck className="w-3.5 h-3.5" />
-                    Authorize Dispatch
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+        <RahatGridReliefConsole />
       )}
 
       {/* ── TAB 5: WEATHER & SATELLITE STATUS ─────────────────────────────── */}
@@ -739,6 +834,17 @@ export default function AdminDashboardPage(): React.ReactElement {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Field Officer Call Simulation Modal */}
+      {activeCallIncident && (
+        <FieldOfficerCallModal
+          isOpen={isCallModalOpen}
+          onClose={() => setIsCallModalOpen(false)}
+          officer={getFieldOfficerForDistrict(activeCallIncident.district)}
+          incident={activeCallIncident}
+          onCallLogged={handleCallLogged}
+        />
       )}
     </div>
   );

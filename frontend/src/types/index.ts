@@ -32,6 +32,15 @@ export interface AiScore {
   label: "AI Recommendation (unverified — human review required)";
 }
 
+export interface SubReportItem {
+  id: string;
+  reporterName: string;
+  reportedAt: string;
+  description: string;
+  mediaUrl?: string | null;
+  location?: GeoPoint;
+}
+
 export interface Incident {
   id: string;
   title: string;
@@ -46,6 +55,8 @@ export interface Incident {
   evidence: EvidenceItem[];
   aiScore?: AiScore;
   tags: string[];
+  reportCount?: number;
+  subReports?: SubReportItem[];
   isDemo: true; // always true in frontend mock
 }
 
@@ -162,6 +173,13 @@ export interface PublicAlert {
   issuedAt: string;
   expiresAt?: string;
   affectedRoad?: string;
+  closureReason?: string;
+  alternateRoute?: {
+    name: string;
+    description: string;
+    passableFor?: string;
+    extraTime?: string;
+  };
   telegramBroadcastStatus?: {
     channel: string;
     subscribersCount: number;

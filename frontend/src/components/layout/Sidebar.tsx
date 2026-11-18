@@ -13,6 +13,8 @@ import {
   MapPin,
   Lock,
   LayoutDashboard,
+  Bell,
+  Home,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -24,6 +26,11 @@ interface NavItem {
 
 const PUBLIC_NAV: NavItem[] = [
   {
+    label: "Portal Home",
+    href: "/",
+    icon: Home,
+  },
+  {
     label: "Mountain Road Map",
     href: "/dashboard/roads",
     icon: Map,
@@ -32,6 +39,11 @@ const PUBLIC_NAV: NavItem[] = [
     label: "Public Overview",
     href: "/dashboard",
     icon: LayoutDashboard,
+  },
+  {
+    label: "Officer Disaster Updates",
+    href: "/dashboard/notifications",
+    icon: Bell,
   },
   {
     label: "Report Disaster Incident",
@@ -73,7 +85,11 @@ export function Sidebar({ className }: SidebarProps) {
       )}
     >
       {/* ── Logo ─────────────────────────────────────────────────────────── */}
-      <div className="flex items-center gap-3 px-4 py-5 border-b border-slate-800">
+      <Link
+        href="/"
+        className="flex items-center gap-3 px-4 py-5 border-b border-slate-800 hover:bg-slate-800/40 transition-colors"
+        title="Go to AAPDA Grid Home"
+      >
         <Shield className="w-7 h-7 text-emerald-500 flex-shrink-0" aria-hidden="true" />
         {!collapsed && (
           <div className="overflow-hidden">
@@ -85,7 +101,7 @@ export function Sidebar({ className }: SidebarProps) {
             </span>
           </div>
         )}
-      </div>
+      </Link>
 
       {/* ── Collapse Toggle ───────────────────────────────────────────────── */}
       <button

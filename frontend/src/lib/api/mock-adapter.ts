@@ -13,6 +13,7 @@ import type {
   DemoStats,
   PublicAlert,
 } from "@/types";
+import { getAlternateRouteForDistrict } from "./alternate-routes";
 
 // ─── Incidents ────────────────────────────────────────────────────────────────
 export const MOCK_INCIDENTS: Incident[] = [
@@ -48,6 +49,23 @@ export const MOCK_INCIDENTS: Incident[] = [
       label: "AI Recommendation (unverified — human review required)",
     },
     tags: ["landslide", "road-block", "NH-44"],
+    reportCount: 2,
+    subReports: [
+      {
+        id: "RPT-SUB-101",
+        reporterName: "citizen_truck_driver",
+        reportedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+        description: "Massive mud and boulders slid onto NH-44 at Panthyal. Both lanes blocked, cannot pass.",
+        location: { lat: 33.244, lng: 75.258 },
+      },
+      {
+        id: "RPT-SUB-102",
+        reporterName: "local_shopkeeper_ramban",
+        reportedAt: new Date(Date.now() - 100 * 60 * 1000).toISOString(),
+        description: "Debris continuing to slide down slope near Ramban approach. 20+ vehicles stranded.",
+        location: { lat: 33.244, lng: 75.258 },
+      },
+    ],
     isDemo: true,
   },
   {
@@ -687,12 +705,23 @@ export function broadcastAlert(alert: {
   severity: "critical" | "warning" | "advisory";
   district: string;
   affectedRoad?: string;
+  closureReason?: string;
+  alternateRoute?: {
+    name: string;
+    description: string;
+    passableFor?: string;
+    extraTime?: string;
+  };
 }): PublicAlert {
+  const advisory = getAlternateRouteForDistrict(alert.district);
   const newAlert: PublicAlert = {
     ...alert,
     id: `ALT-${Date.now().toString(36).toUpperCase()}`,
     source: "DDMA Incident Commander (Admin Action)",
     issuedAt: new Date().toISOString(),
+    affectedRoad: alert.affectedRoad || advisory.affectedRoad,
+    closureReason: alert.closureReason || advisory.closureReason,
+    alternateRoute: alert.alternateRoute || advisory.alternateRoute,
     telegramBroadcastStatus: {
       channel: "@AAPDA_JK_Disaster_Alerts",
       subscribersCount: 1420,
@@ -702,7 +731,66 @@ export function broadcastAlert(alert: {
     isDemo: true,
   };
   MOCK_ALERTS.unshift(newAlert);
+
+  if (typeof window !== "undefined") {
+    try {
+      const stored = localStorage.getItem("aapda_grid_alerts");
+      const list = stored ? JSON.parse(stored) : [...MOCK_ALERTS];
+      const merged = [newAlert, ...list.filter((a: any) => a.id !== newAlert.id)];
+      localStorage.setItem("aapda_grid_alerts", JSON.stringify(merged));
+      window.dispatchEvent(new CustomEvent("aapda_alerts_updated", { detail: newAlert }));
+      window.dispatchEvent(new CustomEvent("storage"));
+    } catch (e) {
+      console.warn("Storage alert sync error:", e);
+    }
+  }
+
   return newAlert;
+}
+
+export function findMatchingIncident(report: {
+  title: string;
+  description: string;
+  district: string;
+  location: { lat: number; lng: number };
+}): Incident | undefined {
+  const normTitle = (report.title || "").toLowerCase();
+  const normDesc = (report.description || "").toLowerCase();
+  const repDistrict = (report.district || "").toLowerCase().trim();
+
+  return MOCK_INCIDENTS.find((inc) => {
+    if (inc.status === "closed") return false;
+
+    // 1. STRICT District Match: If districts differ, NEVER merge!
+    const incDistrict = (inc.district || "").toLowerCase().trim();
+    if (incDistrict && repDistrict && incDistrict !== repDistrict) {
+      return false;
+    }
+
+    // 2. Spatial proximity check: must be within 5 km to be the exact same incident
+    const latDiff = (inc.location.lat - report.location.lat) * 111;
+    const lngDiff = (inc.location.lng - report.location.lng) * 85;
+    const distKm = Math.sqrt(latDiff * latDiff + lngDiff * lngDiff);
+    if (distKm > 5) {
+      return false;
+    }
+
+    // 3. Keyword matching
+    const keywords = [
+      "landslide", "rockfall", "shooting stone", "debris",
+      "flood", "water", "river", "overflow", "submerged",
+      "road", "block", "nh-44", "panthyal", "mughal", "ramban", "doda", "shopian", "chenab",
+      "avalanche", "bridge", "udhampur"
+    ];
+
+    const matchCount = keywords.filter(
+      (w) =>
+        (normTitle.includes(w) || normDesc.includes(w)) &&
+        (inc.title.toLowerCase().includes(w) || inc.description.toLowerCase().includes(w))
+    ).length;
+
+    return matchCount >= 1;
+  });
 }
 
 export function addCitizenReport(report: {
@@ -712,9 +800,75 @@ export function addCitizenReport(report: {
   district: string;
   location: { lat: number; lng: number };
   reportedBy?: string;
+  mediaUrl?: string | null;
 }): Incident {
+  // Check if this report corroborates an existing incident
+  const existing = findMatchingIncident(report);
+
+  if (existing) {
+    existing.reportCount = (existing.reportCount || 1) + 1;
+    existing.updatedAt = new Date().toISOString();
+
+    const subItem = {
+      id: `RPT-SUB-${Date.now().toString(36).toUpperCase()}`,
+      reporterName: report.reportedBy || "citizen_mobile",
+      reportedAt: new Date().toISOString(),
+      description: report.description,
+      mediaUrl: report.mediaUrl || null,
+      location: report.location,
+    };
+
+    if (!existing.subReports || existing.subReports.length === 0) {
+      existing.subReports = [
+        {
+          id: existing.id,
+          reporterName: existing.reportedBy,
+          reportedAt: existing.reportedAt,
+          description: existing.description,
+          mediaUrl: existing.evidence?.[0]?.url || null,
+          location: existing.location,
+        },
+      ];
+    }
+    existing.subReports.unshift(subItem);
+
+    if (report.mediaUrl) {
+      existing.evidence.unshift({
+        id: `EV-${Date.now().toString(36)}`,
+        type: "image",
+        url: report.mediaUrl,
+        caption: `Evidence photo from ${report.reportedBy || "citizen"}`,
+        uploadedAt: new Date().toISOString(),
+        uploadedBy: report.reportedBy || "citizen_mobile",
+        aiAnalyzed: true,
+        aiCaption: "Citizen attached photo corroborating hazard.",
+      });
+    }
+
+    if (existing.aiScore) {
+      existing.aiScore.confidence = Math.min(0.99, Number((existing.aiScore.confidence + 0.04).toFixed(2)));
+      existing.aiScore.duplicateProbability = 0.96;
+      existing.aiScore.uncertaintyFlags = [
+        `Corroborated by ${existing.reportCount} independent citizen reports across the sector`,
+      ];
+    }
+
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem("aapda_grid_incidents", JSON.stringify(MOCK_INCIDENTS));
+        window.dispatchEvent(new CustomEvent("aapda_incidents_updated", { detail: MOCK_INCIDENTS }));
+      } catch (e) {
+        console.warn("Storage sync error:", e);
+      }
+    }
+
+    return existing;
+  }
+
+  // Otherwise, create a new incident
+  const assignedId = `REP-${Date.now().toString(36).toUpperCase()}`;
   const newIncident: Incident = {
-    id: `REP-${Date.now().toString(36).toUpperCase()}`,
+    id: assignedId,
     title: report.title,
     description: report.description,
     severity: report.severity,
@@ -724,7 +878,20 @@ export function addCitizenReport(report: {
     reportedAt: new Date().toISOString(),
     reportedBy: report.reportedBy || "citizen_mobile",
     updatedAt: new Date().toISOString(),
-    evidence: [],
+    evidence: report.mediaUrl
+      ? [
+          {
+            id: `EV-${Date.now().toString(36)}`,
+            type: "image",
+            url: report.mediaUrl,
+            caption: `Photo evidence from ${report.reportedBy || "citizen"}`,
+            uploadedAt: new Date().toISOString(),
+            uploadedBy: report.reportedBy || "citizen_mobile",
+            aiAnalyzed: true,
+            aiCaption: "Citizen attached photo.",
+          },
+        ]
+      : [],
     aiScore: {
       confidence: 0.88,
       duplicateProbability: 0.04,
@@ -733,9 +900,31 @@ export function addCitizenReport(report: {
       label: "AI Recommendation (unverified — human review required)",
     },
     tags: [report.district.toLowerCase(), "citizen-report", "unverified"],
+    reportCount: 1,
+    subReports: [
+      {
+        id: assignedId,
+        reporterName: report.reportedBy || "citizen_mobile",
+        reportedAt: new Date().toISOString(),
+        description: report.description,
+        mediaUrl: report.mediaUrl || null,
+        location: report.location,
+      },
+    ],
     isDemo: true,
   };
+
   MOCK_INCIDENTS.unshift(newIncident);
+
+  if (typeof window !== "undefined") {
+    try {
+      localStorage.setItem("aapda_grid_incidents", JSON.stringify(MOCK_INCIDENTS));
+      window.dispatchEvent(new CustomEvent("aapda_incidents_updated", { detail: MOCK_INCIDENTS }));
+    } catch (e) {
+      console.warn("Storage sync error:", e);
+    }
+  }
+
   return newIncident;
 }
 
@@ -744,6 +933,15 @@ export function updateRoadStatusMock(roadId: string, status: "open" | "partially
   if (road) {
     road.status = status;
     road.closureReason = status === "open" ? undefined : `Updated by DDMA Officer: ${status.replace("_", " ")}`;
+  }
+  if (typeof window !== "undefined") {
+    try {
+      localStorage.setItem("aapda_grid_roads", JSON.stringify(MOCK_ROADS));
+      window.dispatchEvent(new CustomEvent("aapda_roads_updated", { detail: MOCK_ROADS }));
+      window.dispatchEvent(new CustomEvent("storage"));
+    } catch (e) {
+      console.warn("Storage road sync error:", e);
+    }
   }
   return road;
 }
